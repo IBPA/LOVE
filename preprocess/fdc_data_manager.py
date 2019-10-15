@@ -12,6 +12,7 @@ import logging as log
 import os
 
 # third party libraries
+import numpy as np
 import pandas as pd
 
 class FdcDataManager:
@@ -45,27 +46,25 @@ class FdcDataManager:
             filepath = os.path.join(self.fdc_dir, '{}.csv'.format(filename))
             log.info('Loading FDC %s data from \'%s\'...', filename, filepath)
 
-            dtype_dic = {}
-            usecols_list = []
-            parse_dates_list = []
+            dtype = {}
+            option_value = self.configparser.get_section_as_dict(filename)
 
-            for key in self.configparser.options(filename):
-                for value in self.configparser.getstr(key, section=filename).split(', '):
-                    if key == 'datetime':
-                        parse_dates_list.append(value)
-                    elif key == 'usecols':
-                        usecols_list.append(value)
-                    else:
-                        dtype_dic[value] = key
+            for key, values in option_value.items():
+                if key not in ['datetime', 'usecols']:
+                    for value in values:
+                        dtype[value.strip()] = key
 
-            log.debug('dtype: %s', str(dtype_dic))
-            log.debug('use columns: %s', str(usecols_list))
-            log.debug('datetime columns: %s', str(parse_dates_list))
+            datetime = [] if 'datetime' not in option_value else option_value['datetime']
+            usecols = [] if 'usecols' not in option_value else option_value['usecols']
+
+            log.debug('dtype: %s', str(dtype))
+            log.debug('datetime columns: %s', str(datetime))
+            log.debug('using only these columns: %s', str(usecols))
 
             fdc_data_dic[filename] = pd.read_csv(
                 filepath,
-                dtype=dtype_dic,
-                parse_dates=parse_dates_list)[usecols_list]
+                dtype=dtype,
+                parse_dates=datetime)[usecols]
 
         return fdc_data_dic
 
@@ -121,3 +120,32 @@ class FdcDataManager:
             rsuffix='_food_attribute')
 
         return pd_joined
+
+    def filter_data(self, pd_data, column_keyword):
+        """
+        Filter the rows of joined data that contains
+        the keyword(s) located at certain column(s).
+
+        Inputs:
+            pd_data: (DataFrame) Joined FDC data.
+            column_keyword: (dict) Dictionary where key is the
+                column name, and value is list of keywords
+                that will be searched in the specified column.
+                The value field can also be a regex.
+                ex) column_keyword = {
+                        'data_type': 'sample_food|market_acquisition',
+                        'description': ['bean'],
+                    }
+
+        Returns:
+            (DataFrame) Filtered data.
+        """
+        idx = pd.Series(False, index=np.arange(pd_data.shape[0]))
+
+        for column, keyword in column_keyword.items():
+            if isinstance(keyword, list):
+                keyword = '|'.join(keyword)
+
+            idx |= pd_data[column].str.contains(keyword, case=False)
+
+        return pd_data[idx].reset_index()

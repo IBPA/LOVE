@@ -48,20 +48,33 @@ def main():
     args = parse_argument()
     configparser = ConfigParser(args.config_file)
 
+    # config
+    output_dir = configparser.getstr('output_dir', 'output')
+
     # init FDC data manager
     fdc_dm = FdcDataManager(
-        configparser.getstr('fdc_data_dir'),
-        ConfigParser(configparser.getstr('fdc_config_filepath')))
+        configparser.getstr('fdc_data_dir', 'input'),
+        ConfigParser(configparser.getstr('fdc_config_filepath', 'input')))
 
     # join the FDC data and save it
     pd_joined = fdc_dm.join_data()
 
     joined_filepath = os.path.join(
-        configparser.getstr('output_dir'),
-        configparser.getstr('joined_fdc_filename'))
+        output_dir,
+        configparser.getstr('joined_fdc_filename', 'output'))
 
     log.info('Saving joined FDC data to \'%s\'...', joined_filepath)
     pd_joined.to_csv(joined_filepath, index=False)
+
+    # filter the data according to keywords and save
+    column_keyword = configparser.get_section_as_dict('filter_fdc_data')
+    pd_filtered = fdc_dm.filter_data(pd_joined, column_keyword)
+
+    filtered_filepath = os.path.join(
+        output_dir,
+        configparser.getstr('filtered_fdc_filename', 'output'))
+
+    pd_filtered.to_csv(filtered_filepath, index=False)
 
 if __name__ == '__main__':
     main()

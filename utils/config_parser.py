@@ -106,3 +106,36 @@ class ConfigParser:
             (float) Configuration in float format.
         """
         return self.config.getfloat(section, key)
+
+    def get_section_as_dict(self, section='DEFAULT', value_delim=','):
+        """
+        For the specified section, return all its options
+        and values as a dictionary.
+
+        Inputs:
+            section: (str) Section to fetch from.
+            value_delim: (str) Delimiter for splitting the values.
+                If None specified, value will not be processed and
+                returned as string.
+
+        Returns:
+            dictionary: (dict) Dictionary where key is the option
+                and value is a string or list of string depending
+                on the 'value_delim' parameter.
+                ex) dictionary = {
+                        'option1' = ['value1', 'value2']
+                        'option2' = ['value3']
+                    }
+        """
+        dictionary = {}
+
+        for key in self.options(section):
+            value = self.getstr(key, section=section)
+
+            if value_delim:
+                value = value.split(value_delim)
+                value = [item.strip() for item in value]
+
+            dictionary[key] = value
+
+        return dictionary
