@@ -11,7 +11,6 @@ To-do:
 import os
 import random
 import numpy as np
-import sys
 
 # third party imports
 import pandas as pd
@@ -19,7 +18,6 @@ import gensim
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 mpl.rcParams['figure.dpi'] = 300
-from sklearn.decomposition import PCA
 from sklearn.manifold import TSNE
 
 
@@ -29,16 +27,15 @@ def main():
     """
 
     # settings
-    preprocess_dir = '/home/work/phd/FoodOntology/FoodOntology_20191209/data/preprocess'
+    preprocess_dir = '/home/jyoun/Jason/Research/FoodOntology/output'
     filename_token = os.path.join(preprocess_dir, 'tokenized.csv')
     flag_ingredients = True
-    len_ingredients = 3 # take the whole ingredient if -1
-    non_nutrient_columns = ['fdc_id', 'description', 'ingredients', 'branded', 'wweia', 'SR_legacy', 'category']
+    len_ingredients = 3  # take the whole ingredient if -1
 
     flag_cat_filter = True
     cat_filter = ['Meat']
 
-    model_dir = '/home/work/phd/FoodOntology/FoodOntology_20191209/data/word2vec'
+    model_dir = '/home/jyoun/Jason/Research/FoodOntology/data/word2vec'
     filename_model = os.path.join(model_dir, 'modelfile')
     flag_retrain = True
 
@@ -52,7 +49,7 @@ def main():
     # tSNE parameters
     perplexity = 30
     n_iter = 1000
-    random_state = 1 # fix random seed to ensure reproducibility of plots
+    random_state = 1  # fix random seed to ensure reproducibility of plots
 
     # load tokens
     pd_token = pd.read_csv(filename_token, sep=';')
@@ -81,12 +78,18 @@ def main():
     if os.path.exists(filename_model) and not flag_retrain:
         word2vec = gensim.models.Word2Vec.load(filename_model)
     else:
-        word2vec = gensim.models.Word2Vec(token_list,
-                                       size=hidden_layer_size,
-                                       window=window_size,
-                                       min_count=min_count,
-                                       workers=workers_num)
-        word2vec.train(token_list, total_examples=len(token_list), epochs=epochs)
+        word2vec = gensim.models.Word2Vec(
+            token_list,
+            size=hidden_layer_size,
+            window=window_size,
+            min_count=min_count,
+            workers=workers_num)
+
+        word2vec.train(
+            token_list,
+            total_examples=len(token_list),
+            epochs=epochs)
+
         word2vec.save(filename_model)
 
     # generate coordinate for food (not individual token)

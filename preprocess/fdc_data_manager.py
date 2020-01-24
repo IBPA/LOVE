@@ -15,6 +15,7 @@ import os
 import numpy as np
 import pandas as pd
 
+
 class FdcDataManager:
     """
     Class for managing the FDC data.
@@ -41,8 +42,12 @@ class FdcDataManager:
                 and the value is DataFrame containing its data.
         """
         fdc_data_dic = {}
+        filenames = self.configparser.sections()
 
-        for filename in self.configparser.sections():
+        # make sure we are going to load files
+        assert len(filenames) != 0
+
+        for filename in filenames:
             filepath = os.path.join(self.fdc_dir, '{}.csv'.format(filename))
             log.info('Loading FDC %s data from \'%s\'...', filename, filepath)
 
@@ -101,23 +106,23 @@ class FdcDataManager:
             on='food_category_id',
             rsuffix='_food_category')
 
-        # join (food_attribute, food_attribute_type)
-#        self.fdc_data_dic['food_attribute'] = self.fdc_data_dic['food_attribute'].fillna('')
-#        self.fdc_data_dic['food_attribute'] = self.fdc_data_dic['food_attribute'].groupby(
-#            ['fdc_id', 'food_attribute_type_id'])['value'].agg(', '.join).reset_index()
-#
-#        pd_food_attribute_joined = self.fdc_data_dic['food_attribute'].join(
-#            self.fdc_data_dic['food_attribute_type'].set_index('id'),
-#            on='food_attribute_type_id')
-#
-#        pd_food_attribute_joined = pd_food_attribute_joined.groupby(
-#            ['fdc_id']).agg(', '.join).reset_index()
-#
-#        # join (joined, food_attribute_joined)
-#        pd_joined = pd_joined.join(
-#            pd_food_attribute_joined.set_index('fdc_id'),
-#            on='fdc_id',
-#            rsuffix='_food_attribute')
+        # # join (food_attribute, food_attribute_type)
+        # self.fdc_data_dic['food_attribute'] = self.fdc_data_dic['food_attribute'].fillna('')
+        # self.fdc_data_dic['food_attribute'] = self.fdc_data_dic['food_attribute'].groupby(
+        #     ['fdc_id', 'food_attribute_type_id'])['value'].agg(', '.join).reset_index()
+
+        # pd_food_attribute_joined = self.fdc_data_dic['food_attribute'].join(
+        #     self.fdc_data_dic['food_attribute_type'].set_index('id'),
+        #     on='food_attribute_type_id')
+
+        # pd_food_attribute_joined = pd_food_attribute_joined.groupby(
+        #     ['fdc_id']).agg(', '.join).reset_index()
+
+        # # join (joined, food_attribute_joined)
+        # pd_joined = pd_joined.join(
+        #     pd_food_attribute_joined.set_index('fdc_id'),
+        #     on='fdc_id',
+        #     rsuffix='_food_attribute')
 
         return pd_joined
 
@@ -140,6 +145,11 @@ class FdcDataManager:
         Returns:
             (DataFrame) Filtered data.
         """
+        # check if dictionary is empty
+        if not bool(column_keyword):
+            log.info('Nothing to filter. Skipping data filtering...')
+            return pd_data
+
         idx = pd.Series(False, index=np.arange(pd_data.shape[0]))
 
         for column, keyword in column_keyword.items():

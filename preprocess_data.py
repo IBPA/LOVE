@@ -19,10 +19,10 @@ import sys
 import pandas as pd
 
 # local imports
-from utils.config_parser import ConfigParser
-from utils.set_logging import set_logging
 from preprocess.fdc_data_manager import FdcDataManager
 from preprocess.token_manager import TokenManager
+from utils.config_parser import ConfigParser
+from utils.set_logging import set_logging
 
 # global variables
 DEFAULT_CONFIG_FILE = './config/preprocess.ini'
@@ -55,6 +55,7 @@ def main():
     configparser = ConfigParser(args.config_file)
 
     # config
+    data_preprocess_dir = configparser.getstr('data_preprocess_dir', 'input')
     output_dir = configparser.getstr('output_dir', 'output')
 
     # init FDC data manager
@@ -74,13 +75,13 @@ def main():
 
     # filter the data according to keywords and save
     column_keyword = configparser.get_section_as_dict('filter_fdc_data')
-    # pd_filtered = fdc_dm.filter_data(pd_joined, column_keyword) # no filtering
-    pd_filtered = pd_joined.copy()
+    pd_filtered = fdc_dm.filter_data(pd_joined, column_keyword)
 
     filtered_filepath = os.path.join(
         output_dir,
         configparser.getstr('filtered_fdc_filename', 'output'))
 
+    log.info('Saving filtered FDC data to \'%s\'...', filtered_filepath)
     pd_filtered.to_csv(filtered_filepath, index=False)
 
     # preprocessing before tokenization
@@ -96,13 +97,13 @@ def main():
                     'description_food_category': 'SR_legacy'}
     pd_token.rename(columns=col_name_map, inplace=True)
 
+    # choose data that has some kind of category information
     pd_token = pd_token[~pd_token['branded'].isnull() | ~pd_token['wweia'].isnull() | ~pd_token['SR_legacy'].isnull()]
     pd_token['description'] = pd_token['description'].str.lower()
     pd_token['ingredients'] = pd_token['ingredients'].str.lower()
 
     # tokenize
-    preprocess_dir = '/home/work/phd/FoodOntology/FoodOntology_20191209/data/preprocess'
-    tm = TokenManager(preprocess_dir)
+    tm = TokenManager(data_preprocess_dir)
 
     pd_token = tm.categorize_pd(pd_token)
     pd_token['description'] = pd_token['description'].map(tm.find_replace)
@@ -112,7 +113,7 @@ def main():
     pd_token['ingredients'] = pd_token['ingredients'].map(tm.find_replace)
 
     # add nutrient information to tokens
-    nutrient_dir = '/home/work/phd/FoodOntology/FoodOntology_20191209/data/FDC/FoodData_Central_csv_2019-12-17'
+    nutrient_dir = '/home/jyoun/Jason/Research/FoodOntology/data/FDC/FoodData_Central_csv_2019-12-17'
     filename_nut = os.path.join(nutrient_dir, 'food_nutrient.csv')
     pd_nut = pd.read_csv(filename_nut, sep=',', usecols=['fdc_id', 'nutrient_id', 'amount'])
     pd_nut['fdc_id'] = pd_nut['fdc_id'].astype(int)
@@ -131,7 +132,8 @@ def main():
     # clean and save tokens
     if 'index' in pd_token.columns:
         del pd_token['index']
-    filename_token = os.path.join(preprocess_dir, 'tokenized.csv')
+
+    filename_token = os.path.join(output_dir, 'tokenized.csv')
     pd_token.to_csv(filename_token, sep=';')
 
 

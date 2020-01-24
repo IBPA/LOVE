@@ -12,28 +12,28 @@ import logging as log
 import os
 
 # third party libraries
-import numpy as np
 import pandas as pd
 import re
+
 
 class TokenManager:
     """
     Class for tokenizing the FDC data.
     """
 
-    def __init__(self, preprocess_dir, replace_csv='FindReplace.csv', cat_csv='simplified_categories.csv'):
+    def __init__(self, data_preprocess_dir, replace_csv='FindReplace.csv', cat_csv='simplified_categories.csv'):
         """
         Class initializer.
 
         Inputs:
-            preprocess_dir: (str) Directory containing preprocess rules.
+            data_preprocess_dir: (str) Directory containing preprocess rules.
             replace_csv: (str) csv containing remove/replace words.
             cat_csv: (str) csv containing category labels
             nutrient_dir: (str) Directory containing FDC nutrient data.
         """
-        self.preprocess_dir = preprocess_dir
-        self.replace_csv = os.path.join(self.preprocess_dir, replace_csv)
-        self.cat_csv = os.path.join(self.preprocess_dir, cat_csv)
+        self.data_preprocess_dir = data_preprocess_dir
+        self.replace_csv = os.path.join(self.data_preprocess_dir, replace_csv)
+        self.cat_csv = os.path.join(self.data_preprocess_dir, cat_csv)
 
         # Load FindReplace.csv
         pd_replace = pd.read_csv(self.replace_csv, sep=';')
@@ -58,12 +58,12 @@ class TokenManager:
 
     def categorize_pd(self, pd_fdc):
         """
-        Introduce category field to FDC dataframe
+        Introduce category field to FDC dataframe.
 
         Input:
-            pd_fdc: (DataFrame) raw FDC dataframe
+            pd_fdc: (DataFrame) Raw FDC dataframe.
         Ouptut:
-            pd_fdc: (DataFrame) FDC dataframe with category column
+            pd_fdc: (DataFrame) FDC dataframe with category column.
         """
         for key in self.cat_maps:
             pd_fdc[key] = pd_fdc[key].fillna('').astype(str)
@@ -73,6 +73,7 @@ class TokenManager:
             pd_fdc['category'] = pd_sel[key].map(cat_map)
 
         pd_fdc['category'].fillna('', inplace=True)
+
         return pd_fdc
 
     def pd2brands(self, pd_fdc, brand_size_max=3, filename_brands='brands.csv'):
@@ -122,6 +123,7 @@ class TokenManager:
 
         for key in keys:
             description = description.replace(key, self.replace_dict[key])
+
         for key in keys_sep:
             desc_list = [self.replace_dict_sep[x] if x == key else x for x in description.split()]
             description = ' '.join(desc_list)
@@ -133,9 +135,9 @@ class TokenManager:
         Tokenize text. Optimized for description only.
 
         Input:
-            text: (str) text to be tokenized
+            text: (str) Text to be tokenized.
         Output:
-            tokens: (str) tokenized text separated by space
+            tokens: (str) Tokenized text separated by space.
         """
         tokens = text.split()
         tokens = [x.strip(',') for x in tokens]
@@ -162,6 +164,7 @@ class TokenManager:
             ingredients = ' '.join(ingredients.split())
         else:
             ingredients = ''
+
         return ingredients
 
     def remove_numeric(self, description_raw):
@@ -177,13 +180,14 @@ class TokenManager:
         """
         non_numerics = []
         desc = description_raw.split()
+
         for i, x in enumerate(desc):
             # check if numeric
             try:
                 float(x)
 
                 # save numeric if in front of %
-                if i < len(desc)-1:
+                if i < len(desc) - 1:
                     if desc[i + 1] == '%':
                         non_numerics.append(x)
 
@@ -191,6 +195,7 @@ class TokenManager:
                 non_numerics.append(x)
 
         description = ' '.join(non_numerics)
+
         return description
 
     def append_label(self, pd_data, pd_label, columns_match=['fdc_id']):
