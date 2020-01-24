@@ -1,0 +1,362 @@
+Type;FDC data type;space sep;Find;Replace
+;;1;au gratin;au-gratin
+PhraseSynonym;;1;baby food;baby-food
+;;1;chop suey;chop-suey
+;;1;chow mein;chow-mein
+;;1;cooking;cooked
+;;1;custard-like;custard
+;branded;1;DAIRY FREE;no-dairy
+;branded;1;dairy-free;no-dairy
+;;1;dark-green;green
+;;1;excluding potatoes;no-potatoes
+PhraseSynonym;;1;fat free;no-fat
+PhraseSynonym;;1;fat not added;no-fat
+;;1;fat not added;no-fat
+;;1;fat/calorie;fat calorie
+;;1;General Tso;General-Tso
+;branded;1;GRADE A;grade-a
+;;1;grass-fed;grass fed
+;;1;half & half;half-and-half
+FoodName;;1;half and half;half-and-half
+;;1;honey-roasted;honey roasted
+FoodName;;1;ice cream;ice-cream
+Synonym;;1;imitation;substitute
+;;1;Kung pao ;Kung-Pao
+PhraseSynonym;;1;lactose free;lactose-free
+;;1;lactosefree;lactose-free
+PhraseSynonym;;1;lactose reduced;low-lactose
+;;1;lau lau;lau-lau
+PhraseSynonym;;1;low fat;low-fat
+PhraseSynonym;;1;low moisture;low-moisture
+PhraseSynonym;;1;low sodium;low-sodium
+;;1;margarine-like;margarine
+;;1;mayonnaise-type;mayonnaise type
+;;1;meatless;
+Synonym;;1;mock;substitute
+;;1;Moo Goo Gai Pan;Moo-Goo-Gai-Pan
+;branded;1;no beans;no-beans
+;;1;no dressing;no-dressing
+PhraseSynonym;;1;no noodles;no-noodles
+;;1;no potatoes;no-potatoes
+;;1;no rice;no-rice
+;;1;no sodium;no-sodium
+PhraseSynonym;;1;non Fat;no-fat
+;;1;nonfat;no-fat
+;;1;nong;nog
+PhraseSynonym;;1;not reconstituted;original
+;;1;part-skim;low-fat
+;;1;part skim;low-fat
+FoodName;;1;pork chop;pork-chop
+;;1;reduced calorie;low-calorie
+PhraseSynonym;;1;reduced fat;low-fat
+;;1;reduced sodium;low-sodium
+;;1;reduced sugar;low-sugar
+;;1;rice-vegetable;rice vegetable
+FoodName;;1;salad dressing;salad-dressing
+;;1;salted;salt
+;;1;SEASIONING;seasoning
+;;1;shrimp-egg;shrimp-egg
+FoodName;;1;skim milk;skimilk
+PhraseSynonym;;1;skin not eaten;no-skin
+PhraseSynonym;;1;sugar-free;sugar-free
+;branded;1;TAIL OFF;tail-off
+;branded;1;tail-on;tail
+;;1;tomato-based ;tomato based
+;;1;unsalted;no-salt
+;;1;unsweetened;no-sugar
+Nutrient;;1;Vit A;Vitamin-A
+Nutrient;;1;Vit D;Vitamin-D
+Nutrient;;1;Vitamin A;VitaminA
+;;1;vitamin a&d;vitamin-a vitamin-d
+Nutrient;;1;Vitamin D;VitaminD
+FoodName;;1;whole milk;whole-milk
+PhraseSynonym;;1;without added Vit D;no-VitaminD
+;branded;1;without beans;no-beans
+PhraseSynonym;;1;without fat;no-fat
+;;1;without salt;no-salt
+;;1;without tomato;no-tomato
+;;1;lite;light
+;;1;CHHESE;cheese
+;;1;not smoked;not-smoked
+;;1;QUINOAMILK;QUINOA MILK
+;;1;RESTAURANTE;RESTAURANT
+Stemming;;1;roast;roasted
+Stemming;;1;roasting;roasted
+Stemming;;1;grilling;grilled
+;;1;salt free;no-sodium
+;;1;ultra-;ultra
+;;1;almondmilk;almond milk
+;;1;liquid;fluid
+;;1;desiccated;dried
+;;1;partially defatted;low-fat
+;;1;less sodium;low-sodium
+;;1;sugar free;no-sugar
+StopWord;;1;as; 
+StopWord;;; to ; 
+StopWord;;; with ; 
+StopWord;;; ns ; 
+StopWord;;; of ; 
+StopWord;;; or ; 
+StopWord;;; not ; 
+StopWord;;; made ; 
+StopWord;;; from ; 
+StopWord;;; only ; 
+StopWord;;; other ; 
+StopWord;;; in ; 
+StopWord;;; on ; 
+StopWord;;; and/or ; 
+StopWord;;; any ; 
+StopWord;;;any ; 
+Punctuation;;;'s;
+Punctuation;;;'s ; 
+Punctuation;;;/;
+Punctuation;;; & ; 
+Punctuation;;;& ; 
+Punctuation;;; &; 
+Punctuation;;;(;
+Punctuation;;;);
+Punctuation;;;*;
+Punctuation;;;,;
+Punctuation;;;-; 
+Brand;;1;Liberte;
+Brand;;1;progresso;
+Brand;;1;bush's;
+Brand;;1;Kala Beautiful Beans Simply;
+Brand;;1;rosarita;
+Brand;;1;NABISCO TRISCUIT;
+Brand;;1;VAN CAMPS;
+Brand;;1;Gebhardt;
+Brand;;1;HEALTHY CHOICE;
+Brand;;1;ALEXIA;
+Brand;;1;365 EVERYDAY VALUE;
+Brand;;1;7 SELECT;
+Brand;;1;7 SISTERS' ANTIQUE;
+Brand;;1;ahold;
+Brand;;1;akara;
+Brand;;1;allens;
+Brand;;1;ALPINA;
+Brand;;1;ALWAYS SAVE;
+Brand;;1;AMAZONAS RAINFOREST PRODUCT, CANARY BEANS;
+Brand;;1;amoy;
+Brand;;1;amish;
+Brand;;1;AMBASSADOR ORGANICS;
+Brand;;1;argo;
+Brand;;1;armour;
+Brand;;1;asian;
+Brand;;1;avanti;
+Brand;;1;b&m;
+Brand;;1;astro;
+Brand;;1;back to nature;
+Brand;;1;BERKSHIRE;
+Brand;;1;BEIJING;
+Brand;;1;BIG Y;
+Brand;;1;BIO-BUD;
+Brand;;1;BIOITALIA;
+Brand;;1;BIRDS EYE;
+Brand;;1;black sheep;
+Brand;;1;BLUE BUNNY;
+Brand;;1;blue lake;
+Brand;;1;blue moose;
+Brand;;1;blue mountain;
+Brand;;1;blue runner;
+Brand;;1;BOB'S RED MILL;
+Brand;;1;boston;
+Brand;;1;boulder;
+Brand;;1;BRACH'S;
+Brand;;1;brookdale;
+Brand;;1;brooks;
+Brand;;1;bumble bee;
+Brand;;1;buddha;
+Brand;;1;buckeye;
+Brand;;1;cadia;
+Brand;;1;cambell's;
+Brand;;1;CARIBOU;
+Brand;;1;CASA FIESTA;
+Brand;;1;Cascadian Farm;
+Brand;;1;AMERICA'S CHOICE;
+Brand;;1;BREAK-O-MORN;
+Brand;;1;brown cow;
+Brand;;1;BRUMMEL & BROWN;
+Brand;;1;CHAMPIONSHIP;
+Brand;;1;CILIEGINE;
+Brand;;1;COCO'MON;
+Brand;;1;cole;
+Brand;;1;cole's;
+Brand;;1;CRACKER BARREL;
+Brand;;1;CROIX VALLEY;
+Brand;;1;CROOKED PIG ;
+Brand;;1;CULINARY;
+Brand;;1;CULINARIA;
+Brand;;1;CUCINA;
+Brand;;1;AURORA;
+Brand;;1;CUMBERLAND FARMS;
+Brand;;1;CURIOUSLY;
+Brand;;1;CVS HEALTH;
+Brand;;1;CVS PHARMACY;
+Brand;;1;D. O. BAENA;
+Brand;;1;DA ROCA;
+Brand;;1;DADDY HINKLE'S;
+Brand;;1;DEL DUCA;
+Brand;;1;DIESTEL;
+Brand;;1;DIETZ & WATSON;
+Brand;;1;earth balance;
+Brand;;1;fage;
+Brand;;1;GLACEAU;
+Brand;;1;giant;
+Brand;;1;goya;
+Brand;;1;GRANDMA'S;
+Brand;;1;EGG-SPECTATIONS;
+Brand;;1;heartland;
+Brand;;1;HIMALA;
+Brand;;1;HORIZON ORGANIC;
+Brand;;1;HORMEL;
+Brand;;1;I CAN'T BELIEVE IT'S NOT BUTTER!;
+Brand;;1;ice;
+Brand;;1;icy;
+Brand;;1;king;
+Brand;;1;kings;
+Brand;;1;king's;
+Brand;;1;LE PETITE;
+Brand;;1;mexican;
+Brand;;1;NORTH ATLANTIC;
+Brand;;1;OLD fashioned;
+Omitted;;1;1/4;
+Omitted;;1;added;
+Omitted;;1;added;
+Omitted;;1;ALL NATURAL;
+Omitted;;1;all-natural;
+Omitted;;1;ALL-NATURAL;
+Omitted;;1;artisan;
+Omitted;;1;basics;
+Omitted;;1;best;
+Omitted;;1;beta;
+Omitted;;1;better;
+Omitted;;1;blend;
+Omitted;;1;bottom;
+Omitted;;1;brand;
+Omitted;;1;CARIBBEAN;
+Omitted;;1;certified;
+Omitted;;1;CHEF;
+Omitted;;1;CHEF'S;
+Omitted;;1;CINCINNATI;
+Omitted;;1;circle;
+Omitted;;1;classics;
+Omitted;;1;cold pack;
+Omitted;;1;COLOMBIAN-STYLE;
+Omitted;;1;country;
+Omitted;;1;country-style;
+Omitted;;1;crystal;
+Omitted;;1;daily;
+Omitted;;1;deli;
+Omitted;;1;DELICIOUS;
+Omitted;;1;DELICIOUSly;
+Omitted;;1;DELISHAVED;
+Omitted;;1;deluxe;
+Omitted;;1;desi;
+Omitted;;1;DETROIT;
+Omitted;;1;diamond;
+Omitted;;1;double;
+Omitted;;1;e-z;
+Omitted;;1;each;
+Omitted;;1;easy;
+Omitted;;1;eaten;
+Omitted;;1;el;
+Omitted;;1;enhanced;
+Omitted;;1;essence;
+Omitted;;1;ez;
+Omitted;;1;family;
+Omitted;;1;famous;
+Omitted;;1;fancy;
+Omitted;;1;farm;
+Omitted;;1;farms;
+Omitted;;1;Food;
+Omitted;;1;foods;
+Omitted;;1;formerly;
+Omitted;;1;fresh;
+Omitted;;1;fully;
+Omitted;;1;garden;
+Omitted;;1;german;
+Omitted;;1;golden;
+Omitted;;1;good;
+Omitted;;1;gourmet;
+Omitted;;1;great;
+Omitted;;1;gyro;
+Omitted;;1;hand;
+Omitted;;1;hand-crafted;
+Omitted;;1;hand-made;
+Omitted;;1;handcrafted;
+Omitted;;1;happy;
+Omitted;;1;home;
+Omitted;;1;home;
+Omitted;;1;home-style;
+Omitted;;1;homegrown;
+Omitted;;1;homestyle;
+Omitted;;1;imported;
+Omitted;;1;including;
+Omitted;;1;indian;
+Omitted;;1;international;
+Omitted;;1;kit;
+Omitted;;1;lake;
+Omitted;;1;lakes;
+Omitted;;1;lb;
+Omitted;;1;like;
+Omitted;;1;major;
+Omitted;;1;miniature;
+Omitted;;1;minute;
+Omitted;;1;natural;
+Omitted;;1;NO STICK;
+Omitted;;1;NON-STICK;
+Omitted;;1;nonstick;
+Omitted;;1;not ready to eat;
+Omitted;;1;one;
+Omitted;;1;organic;
+Omitted;;1;original;
+Omitted;;1;other than chocolate;
+Omitted;;1;ounces;
+Omitted;;1;oven;
+Omitted;;1;oven-;
+Omitted;;1;oz;
+Omitted;;1;oz.;
+Omitted;;1;oz,;
+Omitted;;1;peel ;
+Omitted;;1;PETITE;
+Omitted;;1;place;
+Omitted;;1;plain;
+Omitted;;1;pound;
+Omitted;;1;pounds;
+Omitted;;1;pour;
+Omitted;;1;premium;
+Omitted;;1;prepared;
+Omitted;;1;process;
+Omitted;;1;product;
+Omitted;;1;purchased;
+Omitted;;1;real;
+Omitted;;1;recipe;
+Omitted;;1;restaurant;
+Omitted;;1;serve;
+Omitted;;1;solutions;
+Omitted;;1;SPECIALTY;
+Omitted;;1;squeeze;
+Omitted;;1;stick;
+Omitted;;1;style;
+Omitted;;1;touch;
+Omitted;;1;traditional;
+Omitted;;1;tub;
+Omitted;;1;type;
+Omitted;;1;type;
+Omitted;;1;west;
+Omitted;;1;wrap;
+Omitted;;1;yet;
+Omitted;;1;pure;
+Omitted;;1;quick;
+Omitted;;1;robust;
+Omitted;;1;rustic;
+Omitted;;1;select;
+Omitted;;1;quality;
+Omitted;;1;pan-;
+Omitted;;1;rep;
+Omitted;;1;measures;
+Omitted;;1;only;
+Omitted;;1;retail;
+Omitted;;1;parts;
+Omitted;;1;domesticated;

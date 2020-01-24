@@ -102,22 +102,22 @@ class FdcDataManager:
             rsuffix='_food_category')
 
         # join (food_attribute, food_attribute_type)
-        self.fdc_data_dic['food_attribute'] = self.fdc_data_dic['food_attribute'].fillna('')
-        self.fdc_data_dic['food_attribute'] = self.fdc_data_dic['food_attribute'].groupby(
-            ['fdc_id', 'food_attribute_type_id'])['value'].agg(', '.join).reset_index()
-
-        pd_food_attribute_joined = self.fdc_data_dic['food_attribute'].join(
-            self.fdc_data_dic['food_attribute_type'].set_index('id'),
-            on='food_attribute_type_id')
-
-        pd_food_attribute_joined = pd_food_attribute_joined.groupby(
-            ['fdc_id']).agg(', '.join).reset_index()
-
-        # join (joined, food_attribute_joined)
-        pd_joined = pd_joined.join(
-            pd_food_attribute_joined.set_index('fdc_id'),
-            on='fdc_id',
-            rsuffix='_food_attribute')
+#        self.fdc_data_dic['food_attribute'] = self.fdc_data_dic['food_attribute'].fillna('')
+#        self.fdc_data_dic['food_attribute'] = self.fdc_data_dic['food_attribute'].groupby(
+#            ['fdc_id', 'food_attribute_type_id'])['value'].agg(', '.join).reset_index()
+#
+#        pd_food_attribute_joined = self.fdc_data_dic['food_attribute'].join(
+#            self.fdc_data_dic['food_attribute_type'].set_index('id'),
+#            on='food_attribute_type_id')
+#
+#        pd_food_attribute_joined = pd_food_attribute_joined.groupby(
+#            ['fdc_id']).agg(', '.join).reset_index()
+#
+#        # join (joined, food_attribute_joined)
+#        pd_joined = pd_joined.join(
+#            pd_food_attribute_joined.set_index('fdc_id'),
+#            on='fdc_id',
+#            rsuffix='_food_attribute')
 
         return pd_joined
 
