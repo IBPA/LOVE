@@ -137,6 +137,9 @@ class FdcDataManager:
         pd_joined['fdc_id'] = pd_joined['fdc_id'].astype(int)
         pd_joined.set_index('fdc_id', inplace=True)
 
+        # set all nan with empty string
+        pd_joined.fillna('', inplace=True)
+
         if save_to:
             log.info('Saving joined FDC data to \'%s\'...', save_to)
             pd_joined.to_csv(save_to, sep='\t')
@@ -177,6 +180,48 @@ class FdcDataManager:
             pd_filtered.to_csv(save_to, sep='\t')
 
         return pd_filtered
+
+    def merge_categories(self, pd_data, save_to=None):
+        pd_merged = pd_data.copy()
+
+        # drop any columns specified by the config file
+        if set(['from', 'to']).issubset(self.process_configparser.options('category_merge')):
+            merge_list = self.process_configparser.getstr('from', 'category_merge').split(', ')
+            merge_to = self.process_configparser.getstr('to', 'category_merge')
+
+            log.info('Merging categories %s into \'%s\'', str(merge_list), merge_to)
+            pd_merged[merge_to] = pd_merged[merge_list].apply(lambda x: ' '.join(x), axis=1)
+        else:
+            log.info('Not merging categories')
+
+        if save_to:
+            log.info('Saving FDC data with merged columns to \'%s\'...', save_to)
+            pd_merged.to_csv(save_to, sep='\t')
+
+        return pd_merged
+
+    def create_source_column(self, pd_data, save_to=None):
+        pd_output = pd_data.copy()
+
+        source_dict = self.process_configparser.get_section_as_dict(
+            'create_source_column', value_delim=None)
+
+        # check if dictionary is empty
+        if not bool(source_dict):
+            log.info('Not creating source column...')
+            return pd_output
+
+        pd_output['source'] = ''
+
+        for column, keyword in source_dict.items():
+            idx = ~(pd_output[column] == '')
+            pd_output['source'][idx] = keyword
+
+        if save_to:
+            log.info('Saving filtered FDC data to \'%s\'...', save_to)
+            pd_output.to_csv(save_to, sep='\t')
+
+        return pd_output
 
     def drop_columns(self, pd_data, save_to=None):
         pd_dropped = pd_data.copy()

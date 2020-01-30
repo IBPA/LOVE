@@ -68,6 +68,8 @@ def main():
 
     # do additional processing
     pd_processed = fdc_dm.filter(pd_processed)
+    pd_processed = fdc_dm.merge_categories(pd_processed)
+    pd_processed = fdc_dm.create_source_column(pd_processed)
     pd_processed = fdc_dm.drop_columns(pd_processed)
 
     # do final processing and save the final file
@@ -84,6 +86,7 @@ def main():
 
     pd_processed['description'] = fpm.preprocess_description(pd_processed['description'])
     pd_processed['ingredients'] = fpm.preprocess_ingredient(pd_processed['ingredients'])
+    pd_processed['category'] = fpm.preprocess_category(pd_processed['category'])
 
     filename_token = os.path.join(
         configparser.getstr('output_dir'),
