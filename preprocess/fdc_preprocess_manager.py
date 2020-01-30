@@ -45,6 +45,7 @@ class FdcPreprocessManager:
 
 
     def preprocess_description(self, pd_description):
+        pd_preprocessed = pd_description.fillna('')
         custom_filters = [
             lambda x: x.lower(),
             gpp.strip_punctuation,
@@ -53,15 +54,14 @@ class FdcPreprocessManager:
             gpp.remove_stopwords,
             gpp.stem_text]
 
-        pd_preprocessed = pd_description.apply(
+        pd_preprocessed = pd_preprocessed.apply(
             lambda x: gpp.preprocess_string(x, custom_filters),
             convert_dtype=False)
 
         return pd_preprocessed
 
     def preprocess_ingredient(self, pd_ingredient):
-
-        pd_preprocessed = pd_ingredient.replace(np.nan, '')
+        pd_preprocessed = pd_ingredient.fillna('')
 
         custom_filters = [
             gpp.strip_punctuation,
@@ -70,7 +70,7 @@ class FdcPreprocessManager:
             gpp.remove_stopwords,
             gpp.stem_text]
 
-        pd_preprocessed = pd_ingredient.apply(
+        pd_preprocessed = pd_preprocessed.apply(
             lambda row: gpp.preprocess_string(row, custom_filters),
             convert_dtype=False)
 

@@ -78,7 +78,6 @@ def main():
     log.info('Saving final processed FDC data to \'%s\'...', processed_filepath)
     pd_processed.to_csv(processed_filepath, sep='\t')
 
-
     # init FDC preprocess manager
     fpm = FdcPreprocessManager(
         configparser.getstr('fdc_preprocess_config_filepath'))
@@ -90,6 +89,7 @@ def main():
         configparser.getstr('output_dir'),
         'tokenized.csv')
 
+    log.info('Saving preprocessed FDC data to \'%s\'...', filename_token)
     pd_processed.to_csv(filename_token, sep='\t')
 
 
