@@ -6,9 +6,13 @@ set -e
 # root dir
 root_dir=`pwd`
 
-# update paths in preprocess.ini
-change_from="/path/to/project/root/directory"
-change_to="$root_dir"
+# update paths in prepare.ini
+default_dir="/path/to/project/root/directory"
+user_dir="$root_dir"
 
+echo "Updating filepaths in 'prepare.ini'..."
+sed -i 's|'$default_dir'|'$user_dir'|g' "$root_dir/config/prepare.ini"
+
+# update paths in preprocess.ini
 echo "Updating filepaths in 'preprocess.ini'..."
-sed -i 's|'$change_from'|'$change_to'|g' "$root_dir/config/preprocess.ini"
+sed -i 's|'$default_dir'|'$user_dir'|g' "$root_dir/config/preprocess.ini"
