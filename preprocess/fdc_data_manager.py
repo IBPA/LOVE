@@ -3,7 +3,7 @@ Authors:
     Jason Youn - jyoun@ucdavis.edu
 
 Description:
-    Data manager for processing the FDC dataset.
+    Data manager for processing the FDC dataset downloaded from the website.
 
 To-do:
 """
@@ -15,7 +15,6 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
 # third party libraries
-import numpy as np
 import pandas as pd
 
 # local imports
@@ -31,14 +30,17 @@ class FdcDataManager:
         Class initializer.
 
         Inputs:
-            fdc_dir: (str) Directory containing the FDC data.
-            config_filepath: (str) Configuration filepath.
+            fdc_dir: (str) Directory containing the downloaded FDC data.
+            data_config_filepath: (str) Filepath of the configuration file
+                containing instructions on how to load the downloaded FDC data.
+            process_config_filepath: (str) Filepath of the configuration file
+                containing instructions on how to process FDC data.
         """
         self.fdc_dir = fdc_dir
         self.data_configparser = ConfigParser(data_config_filepath)
         self.process_configparser = ConfigParser(process_config_filepath)
 
-        # load FDC data
+        # load FDC data into a dictionary
         self.fdc_data_dic = self._load_data()
 
     def _load_data(self):
@@ -47,7 +49,7 @@ class FdcDataManager:
 
         Returns:
             fdc_data_dic: (dict) Dictionary where key is the FDC filename,
-                and the value is DataFrame containing its data.
+                and the value is DataFrame containing the loaded data.
         """
         fdc_data_dic = {}
         filenames = self.data_configparser.sections()
@@ -85,9 +87,11 @@ class FdcDataManager:
         """
         Join the FDC data using 'fdc_id' as the main key.
 
+        Inputs:
+            save_to: (str, optional) Path to save the data to.
+
         Returns:
-            pd_joined: (DataFrame) Joined data.
-            save_to: (str) Path to save the data to.
+            pd_joined: (pd.DataFrame) Joined data.
         """
         # join (food, branded_food)
         pd_joined = self.fdc_data_dic['food'].join(
@@ -148,15 +152,14 @@ class FdcDataManager:
 
     def filter(self, pd_data, save_to=None):
         """
-        Filter the rows of joined data that contains
-        the keyword(s) located at certain column(s).
+        Filter the rows of joined data that contains the keyword(s) located at certain column(s).
 
         Inputs:
-            pd_data: (DataFrame) Joined FDC data.
-            save_to: (str) Path to save the data to.
+            pd_data: (pd.DataFrame) Joined FDC data.
+            save_to: (str, optional) Path to save the data to.
 
         Returns:
-            pd_filtered: (DataFrame) Filtered data.
+            pd_filtered: (pd.DataFrame) Filtered data.
         """
         column_keyword = self.process_configparser.get_section_as_dict('filter_fdc_data')
 
@@ -182,9 +185,18 @@ class FdcDataManager:
         return pd_filtered
 
     def merge_categories(self, pd_data, save_to=None):
+        """
+        Merge categories into one column.
+
+        Inputs:
+            pd_data: (pd.DataFrame) Input data.
+            save_to: (str, optional) Path to save the data to.
+
+        Returns:
+            pd_merged: (pd.DataFrame) Categories merged.
+        """
         pd_merged = pd_data.copy()
 
-        # drop any columns specified by the config file
         if set(['from', 'to']).issubset(self.process_configparser.options('category_merge')):
             merge_list = self.process_configparser.getstr('from', 'category_merge').split(', ')
             merge_to = self.process_configparser.getstr('to', 'category_merge')
@@ -201,6 +213,16 @@ class FdcDataManager:
         return pd_merged
 
     def create_source_column(self, pd_data, save_to=None):
+        """
+        Create source column based on the category information.
+
+        Inputs:
+            pd_data: (pd.DataFrame) Input data.
+            save_to: (str, optional) Path to save the data to.
+
+        Returns:
+            pd_output: (pd.DataFrame) Data with source column added.
+        """
         pd_output = pd_data.copy()
 
         source_dict = self.process_configparser.get_section_as_dict(
@@ -211,6 +233,7 @@ class FdcDataManager:
             log.info('Not creating source column...')
             return pd_output
 
+        # add and fill source column based on the configuration
         pd_output['source'] = ''
 
         for column, keyword in source_dict.items():
@@ -224,11 +247,22 @@ class FdcDataManager:
         return pd_output
 
     def drop_columns(self, pd_data, save_to=None):
+        """
+        Drop columns specified in the configuration file.
+
+        Inputs:
+            pd_data: (pd.DataFrame) Input data.
+            save_to: (str, optional) Path to save the data to.
+
+        Returns:
+            pd_dropped: (pd.DataFrame) Data with some columns dropped.
+        """
         pd_dropped = pd_data.copy()
 
         # drop any columns specified by the config file
         if 'drop_columns' in self.process_configparser.options('drop_options'):
-            drop_columns = self.process_configparser.getstr('drop_columns', 'drop_options').split(', ')
+            drop_columns = self.process_configparser.getstr(
+                'drop_columns', 'drop_options').split(', ')
 
             log.info('Dropping columns %s', str(drop_columns))
             pd_dropped.drop(drop_columns, axis=1, inplace=True)

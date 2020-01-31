@@ -1,9 +1,10 @@
 """
 Authors:
+    Jason Youn - jyoun@ucdavis.edu
     Simon Kit Sang, Chu - kschu@ucdavis.edu
 
 Description:
-    Preprocess manager for processing the FDC dataset.
+    Preprocess manager for the FDC dataset.
 
 To-do:
 """
@@ -36,19 +37,28 @@ class FdcPreprocessManager:
         Class initializer.
 
         Inputs:
+            config_filepath: (str) Configuration filepath.
         """
         self.configparser = ConfigParser(config_filepath)
 
         self.data_preprocess_dir = self.configparser.getstr(
             'data_preprocess_dir', 'directory')
-
         self.phrase_model_output_dir = self.configparser.getstr(
             'phrase_model_output_dir', 'directory')
-
         self.output_dir = self.configparser.getstr(
             'output_dir', 'directory')
 
     def _build_custom_filter_list(self, which):
+        """
+        (Private) Build list of filters based on the configuration file
+        that will be applied by gpp.preprocess_string().
+
+        Inputs:
+            which: (str) Column name ('description' | 'ingredients' | 'category').
+
+        Returns:
+            custom_filters: (list) List of functions.
+        """
         custom_filters = []
 
         if self.configparser.getbool('lower', which):
@@ -83,21 +93,30 @@ class FdcPreprocessManager:
         return custom_filters
 
     def _generate_phrase(self, pd_data, which):
-        if self.configparser.getbool('generate_phrase', which):
+        """
+        (Private) Generate phrase using the gensim Phrase detection module.
 
+        Inputs:
+            pd_data: (pd.Series) Data which will be used to generate phase.
+            which: (str) Column name ('description' | 'ingredients' | 'category').
+
+        Returns:
+            pd_data: (pd.Series) Input data but using phrases.
+        """
+        if self.configparser.getbool('generate_phrase', which):
             log.info('Generating phrases using the %s...', which)
 
-            # detect phrases using the configuration
+            # this is our training data
             sentences = pd_data.tolist()
 
+            # detect phrases using the configuration
             model = Phrases(
                 sentences,
                 min_count=self.configparser.getint('min_count', which),
                 threshold=self.configparser.getfloat('threshold', which),
                 max_vocab_size=self.configparser.getint('max_vocab_size', which),
                 progress_per=self.configparser.getint('progress_per', which),
-                scoring=self.configparser.getstr('scoring', which),
-                )
+                scoring=self.configparser.getstr('scoring', which))
 
             # apply trained model to generate phrase
             log.info('Applying phrase model to the %s...', which)
@@ -133,6 +152,15 @@ class FdcPreprocessManager:
         return pd_data
 
     def preprocess_column(self, pd_data):
+        """
+        Preprocess specified column.
+
+        Inputs:
+            pd_data: (pd.Series) Input data to preprocess.
+
+        Returns:
+            pd_data: (pd.Series) Preprocess data.
+        """
         # preprocess using set of filters
         custom_filters = self._build_custom_filter_list(pd_data.name)
 

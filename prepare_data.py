@@ -14,9 +14,6 @@ import logging as log
 import os
 import sys
 
-# third party imports
-import pandas as pd
-
 # local imports
 from preprocess.fdc_data_manager import FdcDataManager
 from preprocess.fdc_preprocess_manager import FdcPreprocessManager
@@ -84,13 +81,15 @@ def main():
     fpm = FdcPreprocessManager(
         configparser.getstr('fdc_preprocess_config_filepath'))
 
+    # preprocess columns
     pd_processed['description'] = fpm.preprocess_column(pd_processed['description'])
     pd_processed['ingredients'] = fpm.preprocess_column(pd_processed['ingredients'])
     pd_processed['category'] = fpm.preprocess_column(pd_processed['category'])
 
+    # save preprocess final data
     filename_output = os.path.join(
         configparser.getstr('output_dir'),
-        configparser.getstr('output_filename'))
+        configparser.getstr('preprocessed_filename'))
 
     log.info('Saving preprocessed FDC data to \'%s\'...', filename_output)
     pd_processed.to_csv(filename_output, sep='\t')
