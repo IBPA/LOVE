@@ -84,9 +84,10 @@ def main():
     fpm = FdcPreprocessManager(
         configparser.getstr('fdc_preprocess_config_filepath'))
 
-    pd_processed['description'] = fpm.preprocess_description(pd_processed['description'])
-    # pd_processed['ingredients'] = fpm.preprocess_ingredient(pd_processed['ingredients'])
-    # pd_processed['category'] = fpm.preprocess_category(pd_processed['category'])
+
+    pd_processed['description'] = fpm.preprocess_column(pd_processed['description'])
+    pd_processed['ingredients'] = fpm.preprocess_column(pd_processed['ingredients'])
+    pd_processed['category'] = fpm.preprocess_column(pd_processed['category'])
 
     filename_token = os.path.join(
         configparser.getstr('output_dir'),
