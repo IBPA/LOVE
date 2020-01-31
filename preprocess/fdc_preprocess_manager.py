@@ -17,7 +17,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
 # third party imports
 from gensim.models.phrases import Phrases, Phraser
-from gensim.models.word2vec import Text8Corpus
 import gensim.parsing.preprocessing as gpp
 from gensim.test.utils import datapath
 import numpy as np
@@ -45,6 +44,9 @@ class FdcPreprocessManager:
 
         self.phrase_model_output_dir = self.configparser.getstr(
             'phrase_model_output_dir', 'directory')
+
+        self.output_dir = self.configparser.getstr(
+            'output_dir', 'directory')
 
     def _build_custom_filter_list(self, which):
         custom_filters = []
@@ -82,20 +84,49 @@ class FdcPreprocessManager:
 
     def _generate_phrase(self, pd_data, which):
         if self.configparser.getbool('generate_phrase', which):
-            log.info('Generating phrases using the %s...', which)
-            model = Phrases(pd_data.tolist())
 
+            log.info('Generating phrases using the %s...', which)
+
+            # detect phrases using the configuration
+            sentences = pd_data.tolist()
+
+            model = Phrases(
+                sentences,
+                min_count=self.configparser.getint('min_count', which),
+                threshold=self.configparser.getfloat('threshold', which),
+                max_vocab_size=self.configparser.getint('max_vocab_size', which),
+                progress_per=self.configparser.getint('progress_per', which),
+                scoring=self.configparser.getstr('scoring', which),
+                )
+
+            # apply trained model to generate phrase
             log.info('Applying phrase model to the %s...', which)
             pd_data = pd_data.apply(
                 lambda x: model[x],
                 convert_dtype=False)
 
+            # save phrase model
             model_filepath = os.path.join(
                 self.phrase_model_output_dir,
                 self.configparser.getstr('phrase_model_filename', which))
 
             log.info('Saving %s phrase model to \'%s\'...', which, model_filepath)
             model.save(model_filepath)
+
+            # save phrase and its score as text
+            phrase_score_list = []
+            for phrase, score in model.export_phrases(sentences):
+                phrase_score_list.append([phrase.decode('utf-8'), score])
+
+            pd_phrase_score = pd.DataFrame(phrase_score_list, columns=['phrase', 'score'])
+            pd_phrase_score.drop_duplicates(subset='phrase', inplace=True)
+
+            export_filepath = os.path.join(
+                self.output_dir,
+                self.configparser.getstr('phrase_export_filename', which))
+
+            log.info('Saving %s phrases to \'%s\'...', which, export_filepath)
+            pd_phrase_score.to_csv(export_filepath, sep='\t', index=False)
         else:
             log.info('Skipping phrase generation for %s...', which)
 
