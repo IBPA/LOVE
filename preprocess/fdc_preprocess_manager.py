@@ -46,15 +46,43 @@ class FdcPreprocessManager:
         phrase_model_output_dir = self.configparser.getstr(
             'phrase_model_output_dir', 'directory')
 
+    def _build_custom_filter_list(self, which):
+        custom_filters = []
+
+        if self.configparser.getbool('lower', which):
+            log.debug('Converting to lower cases for \'%s\'.', which)
+            custom_filters.append(lambda x: x.lower())
+
+        if self.configparser.getbool('strip_punctuation', which):
+            log.debug('Stripping punctuation for \'%s\'.', which)
+            custom_filters.append(gpp.strip_punctuation)
+
+        if self.configparser.getbool('strip_multiple_whitespaces', which):
+            log.debug('Stripping multiple whitespaces for \'%s\'.', which)
+            custom_filters.append(gpp.strip_multiple_whitespaces)
+
+        if self.configparser.getbool('strip_numeric', which):
+            log.debug('Stripping numeric for \'%s\'.', which)
+            custom_filters.append(gpp.strip_numeric)
+
+        if self.configparser.getbool('remove_stopwords', which):
+            log.debug('Removing stopwords for \'%s\'.', which)
+            custom_filters.append(gpp.remove_stopwords)
+
+        if self.configparser.getbool('strip_short', which):
+            minsize = self.configparser.getint('strip_short_minsize', which)
+            log.debug('Stripping words shorter than %d for \'%s\'.', minsize, which)
+            sys.exit()
+            custom_filters.append(lambda x: gpp.strip_short(x, minsize=minsize))
+
+        if self.configparser.getbool('stem_text', which):
+            log.debug('Stemming text for \'%s\'.', which)
+            custom_filters.append(gpp.stem_text)
+
+        return custom_filters
+
     def preprocess_description(self, pd_description):
-        custom_filters = [
-            lambda x: x.lower(),
-            gpp.strip_punctuation,
-            gpp.strip_multiple_whitespaces,
-            gpp.strip_numeric,
-            gpp.remove_stopwords,
-            lambda x: gpp.strip_short(x, minsize=2),
-            gpp.stem_text]
+        custom_filters = self._build_custom_filter_list('description')
 
         log.info('Applying preprocessing filters to the description...')
         pd_preprocessed = pd_description.apply(
@@ -72,14 +100,7 @@ class FdcPreprocessManager:
         return pd_preprocessed
 
     def preprocess_ingredient(self, pd_ingredient):
-        custom_filters = [
-            lambda x: x.lower(),
-            gpp.strip_punctuation,
-            gpp.strip_multiple_whitespaces,
-            gpp.strip_numeric,
-            gpp.remove_stopwords,
-            lambda x: gpp.strip_short(x, minsize=2),
-            gpp.stem_text]
+        custom_filters = self._build_custom_filter_list('ingredient')
 
         log.info('Applying preprocessing filters to the ingredient...')
         pd_preprocessed = pd_ingredient.apply(
@@ -89,14 +110,7 @@ class FdcPreprocessManager:
         return pd_preprocessed
 
     def preprocess_category(self, pd_category):
-        custom_filters = [
-            lambda x: x.lower(),
-            gpp.strip_punctuation,
-            gpp.strip_multiple_whitespaces,
-            gpp.strip_numeric,
-            gpp.remove_stopwords,
-            lambda x: gpp.strip_short(x, minsize=2),
-            gpp.stem_text]
+        custom_filters = self._build_custom_filter_list('category')
 
         log.info('Applying preprocessing filters to the category...')
         pd_preprocessed = pd_category.apply(
