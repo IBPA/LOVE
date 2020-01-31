@@ -40,9 +40,11 @@ class FdcPreprocessManager:
         """
         self.configparser = ConfigParser(config_filepath)
 
-        data_preprocess_dir = self.configparser.getstr('data_preprocess_dir')
+        data_preprocess_dir = self.configparser.getstr(
+            'data_preprocess_dir', 'directory')
 
-
+        phrase_model_output_dir = self.configparser.getstr(
+            'phrase_model_output_dir', 'directory')
 
     def preprocess_description(self, pd_description):
         custom_filters = [
