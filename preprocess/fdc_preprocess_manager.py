@@ -51,10 +51,20 @@ class FdcPreprocessManager:
             gpp.strip_multiple_whitespaces,
             gpp.strip_numeric,
             gpp.remove_stopwords,
+            lambda x: gpp.strip_short(x, minsize=2),
             gpp.stem_text]
 
+        log.info('Applying preprocessing filters to the description...')
         pd_preprocessed = pd_description.apply(
-            lambda x: ' '.join(gpp.preprocess_string(x, custom_filters)),
+            lambda x: gpp.preprocess_string(x, custom_filters),
+            convert_dtype=False)
+
+        log.info('Generating phrases using the description...')
+        phrases = Phrases(pd_preprocessed.tolist())
+
+        log.info('Applying phrase model to the description...')
+        pd_preprocessed = pd_preprocessed.apply(
+            lambda x: phrases[x],
             convert_dtype=False)
 
         return pd_preprocessed
@@ -66,10 +76,12 @@ class FdcPreprocessManager:
             gpp.strip_multiple_whitespaces,
             gpp.strip_numeric,
             gpp.remove_stopwords,
+            lambda x: gpp.strip_short(x, minsize=2),
             gpp.stem_text]
 
+        log.info('Applying preprocessing filters to the ingredient...')
         pd_preprocessed = pd_ingredient.apply(
-            lambda row: ' '.join(gpp.preprocess_string(row, custom_filters)),
+            lambda row: gpp.preprocess_string(row, custom_filters),
             convert_dtype=False)
 
         return pd_preprocessed
@@ -81,10 +93,12 @@ class FdcPreprocessManager:
             gpp.strip_multiple_whitespaces,
             gpp.strip_numeric,
             gpp.remove_stopwords,
+            lambda x: gpp.strip_short(x, minsize=2),
             gpp.stem_text]
 
+        log.info('Applying preprocessing filters to the category...')
         pd_preprocessed = pd_category.apply(
-            lambda row: ' '.join(gpp.preprocess_string(row, custom_filters)),
+            lambda row: gpp.preprocess_string(row, custom_filters),
             convert_dtype=False)
 
         return pd_preprocessed
