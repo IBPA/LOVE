@@ -113,7 +113,7 @@ class FdcPreprocessManager:
             log.info('Saving %s phrase model to \'%s\'...', which, model_filepath)
             model.save(model_filepath)
 
-            # save phrase and its score as text
+            # dump phrase and its score as text
             phrase_score_list = []
             for phrase, score in model.export_phrases(sentences):
                 phrase_score_list.append([phrase.decode('utf-8'), score])
@@ -123,9 +123,9 @@ class FdcPreprocessManager:
 
             export_filepath = os.path.join(
                 self.output_dir,
-                self.configparser.getstr('phrase_export_filename', which))
+                self.configparser.getstr('phrase_dump_filename', which))
 
-            log.info('Saving %s phrases to \'%s\'...', which, export_filepath)
+            log.info('Dumping %s phrases to \'%s\'...', which, export_filepath)
             pd_phrase_score.to_csv(export_filepath, sep='\t', index=False)
         else:
             log.info('Skipping phrase generation for %s...', which)

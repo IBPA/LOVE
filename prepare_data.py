@@ -75,7 +75,7 @@ def main():
     # do final processing and save the final file
     processed_filepath = os.path.join(
         configparser.getstr('output_dir'),
-        configparser.getstr('final_filename'))
+        configparser.getstr('final_fdc_filename'))
 
     log.info('Saving final processed FDC data to \'%s\'...', processed_filepath)
     pd_processed.to_csv(processed_filepath, sep='\t')
@@ -84,17 +84,16 @@ def main():
     fpm = FdcPreprocessManager(
         configparser.getstr('fdc_preprocess_config_filepath'))
 
-
     pd_processed['description'] = fpm.preprocess_column(pd_processed['description'])
     pd_processed['ingredients'] = fpm.preprocess_column(pd_processed['ingredients'])
     pd_processed['category'] = fpm.preprocess_column(pd_processed['category'])
 
-    filename_token = os.path.join(
+    filename_output = os.path.join(
         configparser.getstr('output_dir'),
-        'tokenized.csv')
+        configparser.getstr('output_filename'))
 
-    log.info('Saving preprocessed FDC data to \'%s\'...', filename_token)
-    pd_processed.to_csv(filename_token, sep='\t')
+    log.info('Saving preprocessed FDC data to \'%s\'...', filename_output)
+    pd_processed.to_csv(filename_output, sep='\t')
 
 
 if __name__ == '__main__':
