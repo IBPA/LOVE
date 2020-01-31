@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Update paths in the configuration file from general path
+# to a local machine specific path. This script must be ran
+# in the root project directory.
+# ./update_paths.sh: general -> user specific
+# ./update_paths.sh revert: user specific -> general
+
 # exit immediately if a command exits with a non-zero status
 set -e
 
