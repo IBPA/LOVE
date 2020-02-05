@@ -82,9 +82,9 @@ def main():
         configparser.getstr('fdc_preprocess_config_filepath'))
 
     # preprocess columns
-    pd_processed['description'] = fpm.preprocess_column(pd_processed['description'])
-    pd_processed['ingredients'] = fpm.preprocess_column(pd_processed['ingredients'])
-    pd_processed['category'] = fpm.preprocess_column(pd_processed['category'])
+    pd_processed['description_preprocessed'] = fpm.preprocess_column(pd_processed['description'])
+    pd_processed['ingredients_preprocessed'] = fpm.preprocess_column(pd_processed['ingredients'])
+    pd_processed['category_preprocessed'] = fpm.preprocess_column(pd_processed['category'])
 
     # save preprocess final data
     filename_output = os.path.join(
