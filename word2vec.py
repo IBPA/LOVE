@@ -56,6 +56,7 @@ def main():
     pd_token = pd.read_csv(filename_token, sep='\t', index_col='fdc_id')
     pd_token['token'] = pd_token['description_preprocessed']
     pd_token = pd_token[pd_token['token'] != '']
+    pd_token.fillna('', inplace=True)
 
     sentences = []
     for tokens in pd_token['token']:
