@@ -11,6 +11,7 @@ To-do:
 import logging as log
 import os
 import sys
+import csv
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
@@ -39,9 +40,14 @@ class FdcDataManager:
         self.fdc_dir = fdc_dir
         self.data_configparser = ConfigParser(data_config_filepath)
         self.process_configparser = ConfigParser(process_config_filepath)
+        self.synonym_filename ='synonym.csv'
 
         # load FDC data into a dictionary
         self.fdc_data_dic = self._load_data()
+
+        synonym_filepath = '/Users/tarininaravane/Documents/GitHub/FoodOntology/data/FDC/synonym.csv'
+        pd_synonym = pd.read_csv(synonym_filepath, sep=',')
+        self.dict_word_synonym = pd_synonym.set_index('Word')['Synonym'].to_dict()
 
     def _load_data(self):
         """
@@ -274,3 +280,22 @@ class FdcDataManager:
             pd_dropped.to_csv(save_to, sep='\t')
 
         return pd_dropped
+
+    def remove_synonyms(self,pd_data):
+        pd_data['description'] = pd_data['description'].str.lower()
+        #pd_data['ingredients'] = pd_data['ingredients'].str.lower()
+        pd_data['description'] = pd_data['description'].map(self.replace_word_synonym)
+        #pd_data['ingredients'] = pd_data['ingredients'].map(replace_word_synonym)
+        return pd_data
+
+   # Make change for lower case
+    def replace_word_synonym(self,x):
+        keys = self.dict_word_synonym.keys()
+        for key in keys:
+            x = x.replace(key, self.dict_word_synonym[key])
+        return x
+        
+
+
+
+

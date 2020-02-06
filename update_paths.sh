@@ -37,8 +37,13 @@ fi
 
 # update paths in prepare.ini
 echo "Updating filepaths in 'prepare.ini'..."
-sed -i 's|'$from'|'$to'|g' "$root_dir/config/prepare.ini"
+#sed -i 's|'$from'|'$to'|g' "$root_dir/config/prepare.ini"
+# Hardcoding $root_dir
+to="/Users/tarininaravane/Documents/GitHub/FoodOntology/"
+sed -i 's|'$from'|'$to'|g' "/Users/tarininaravane/Documents/GitHub/FoodOntology/config/prepare.ini"
 
 # update paths in preprocess.ini
 echo "Updating filepaths in 'preprocess.ini'..."
-sed -i 's|'$from'|'$to'|g' "$root_dir/config/preprocess.ini"
+#sed -i 's|'$from'|'$to'|g' "$root_dir/config/preprocess.ini"
+sed -i 's|'$from'|'$to'|g' "/Users/tarininaravane/Documents/GitHub/FoodOntology/config/preprocess.ini"
+

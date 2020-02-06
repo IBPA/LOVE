@@ -17,9 +17,9 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
 # third party imports
-import gensim.utils as gensim_utils
 from gensim.models.phrases import Phrases, Phraser
 import gensim.parsing.preprocessing as gpp
+from gensim.test.utils import datapath
 import numpy as np
 import pandas as pd
 
@@ -41,71 +41,12 @@ class FdcPreprocessManager:
         """
         self.configparser = ConfigParser(config_filepath)
 
-        self.data_custom_stopwords_dir = self.configparser.getstr(
-            'data_custom_stopwords_dir', 'directory')
+        self.data_preprocess_dir = self.configparser.getstr(
+            'data_preprocess_dir', 'directory')
         self.phrase_model_output_dir = self.configparser.getstr(
             'phrase_model_output_dir', 'directory')
         self.output_dir = self.configparser.getstr(
             'output_dir', 'directory')
-
-    def _generate_custom_stopwords(self, which):
-        """
-        (Private) Generate custom stopwords by adding or removing
-        user specified stopwords to the gensim's default stopwords.
-
-        Inputs:
-            which: (str) Column name ('description' | 'ingredients' | 'category').
-
-        Returns:
-            (frozenset) New updated stopwords.
-        """
-        my_stopwords = list(gpp.STOPWORDS)
-
-        # stopwords to add
-        to_add_filename = os.path.join(
-            self.data_custom_stopwords_dir,
-            self.configparser.getstr('stopwords_to_add', which))
-
-        with open(to_add_filename, 'r') as file:
-            to_add_list = file.read().splitlines()
-
-        if len(to_add_list) > 0:
-            log.info('Adding custom stopwords %s for %s', to_add_list, which)
-        else:
-            log.info('Not adding any custom stopwords for %s', which)
-
-        # stopwords to remove
-        to_remove_filename = os.path.join(
-            self.data_custom_stopwords_dir,
-            self.configparser.getstr('stopwords_to_remove', which))
-
-        with open(to_remove_filename, 'r') as file:
-            to_remove_list = file.read().splitlines()
-
-        if len(to_remove_list) > 0:
-            log.info('Removing stopwords %s for %s', to_remove_list, which)
-        else:
-            log.info('Not removing any custom stopwords for %s', which)
-
-        # add and remove stopwords
-        my_stopwords.extend(to_add_list)
-        my_stopwords = [x for x in my_stopwords if x not in to_remove_list]
-
-        return frozenset(my_stopwords)
-
-    def _custom_remove_stopwords(self, s, stopwords):
-        """
-        (Private) Custom remove stopwords function.
-
-        Inputs:
-            s: (str) String to process.
-            stopwords: (frozenset) Custom stopwords.
-
-        Returns:
-            (str) Preprocessed string with stopwords removed.
-        """
-        s = gensim_utils.to_unicode(s)
-        return " ".join(w for w in s.split() if w not in stopwords)
 
     def _build_custom_filter_list(self, which):
         """
@@ -138,8 +79,7 @@ class FdcPreprocessManager:
 
         if self.configparser.getbool('remove_stopwords', which):
             log.debug('Removing stopwords for %s', which)
-            stopwords = self._generate_custom_stopwords(which)
-            custom_filters.append(lambda x: self._custom_remove_stopwords(x, stopwords))
+            custom_filters.append(gpp.remove_stopwords)
 
         if self.configparser.getbool('strip_short', which):
             minsize = self.configparser.getint('strip_short_minsize', which)
@@ -150,7 +90,9 @@ class FdcPreprocessManager:
             log.debug('Stemming text for %s', which)
             custom_filters.append(gpp.stem_text)
 
+
         return custom_filters
+
 
     def _generate_phrase(self, pd_data, which):
         """

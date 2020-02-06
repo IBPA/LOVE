@@ -61,13 +61,21 @@ def main():
         configparser.getstr('output_dir'),
         configparser.getstr('joined_fdc_filename'))
 
+    #get dataframe with fdc data
     pd_processed = fdc_dm.join(joined_filepath)
 
     # do additional processing
+    # TN Functions defined in fdc_data_manager
+    # TN filtering parameters set in fd_process.ini file. Currently there is no filtering
     pd_processed = fdc_dm.filter(pd_processed)
+    # TN combines the 3 columns for categories into a single column
     pd_processed = fdc_dm.merge_categories(pd_processed)
+    # TN ?
     pd_processed = fdc_dm.create_source_column(pd_processed)
+    # TN columns of data from fdc that is not needed for the training corpus
     pd_processed = fdc_dm.drop_columns(pd_processed)
+    # Map synonyms here .. 
+    pd_processed = fdc_dm.remove_synonyms(pd_processed)
 
     # do final processing and save the final file
     processed_filepath = os.path.join(
@@ -76,6 +84,7 @@ def main():
 
     log.info('Saving final processed FDC data to \'%s\'...', processed_filepath)
     pd_processed.to_csv(processed_filepath, sep='\t')
+    sys.exit()
 
     # init FDC preprocess manager
     fpm = FdcPreprocessManager(

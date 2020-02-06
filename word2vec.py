@@ -27,7 +27,7 @@ def main():
     """
 
     # settings
-    preprocess_dir = '/home/jyoun/Jason/Research/FoodOntology/output'
+    preprocess_dir = '/Users/tarininaravane/Documents/GitHub/FoodOntology/output'
     filename_token = os.path.join(preprocess_dir, 'tokenized.csv')
     flag_ingredients = True
     len_ingredients = 3  # take the whole ingredient if -1
