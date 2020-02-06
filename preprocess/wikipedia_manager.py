@@ -22,8 +22,7 @@ import wikipedia
 # local imports
 from utils.config_parser import ConfigParser
 
-
-NUM_LOGS = 3
+NUM_LOGS = 10
 
 class WikipediaManager:
     """
@@ -35,11 +34,13 @@ class WikipediaManager:
 
         Inputs:
         """
-
         if delim:
             self.queries = [query.replace(delim, ' ') for query in queries]
         else:
             self.queries = queries
+
+        self.queries = list(set(self.queries))
+        print('Loaded {} quries'.format(len(self.queries)))
 
     def get_summary(self, save_summaries=None, save_failed=None):
         summaries = []
@@ -53,7 +54,7 @@ class WikipediaManager:
                 print('Processing query {}/{}'.format(idx, num_queries))
 
             try:
-                summary = wikipedia.summary(query)
+                summary = wikipedia.WikipediaPage(query).summary.replace('\n', '')
                 summaries.append([query, summary])
             except:
                 suggestion = wikipedia.suggest(query)
