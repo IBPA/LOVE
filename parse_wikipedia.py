@@ -55,17 +55,20 @@ def main():
     args = parse_argument()
     configparser = ConfigParser(args.config_file)
 
+    # read preprocessed FDC data
     pd_processed = pd.read_csv(
         configparser.getstr('input_filepath'),
         sep='\t',
         index_col='fdc_id')
     pd_processed.fillna('', inplace=True)
 
+    # build vocabulary list
     vocabs = []
     for row in pd_processed['concatenated_preprocessed'].tolist():
         vocabs.extend(row.split(' '))
     vocabs = list(set(vocabs))
 
+    # get summaries of the wikipedia entry
     wm = WikipediaManager(
         configparser.getstr('stem_lookup_filepath'))
 
@@ -74,6 +77,7 @@ def main():
         configparser.getint('num_try'),
         configparser.getstr('summaries_filepath'),
         configparser.getstr('failed_filepath'),)
+
 
 if __name__ == '__main__':
     main()

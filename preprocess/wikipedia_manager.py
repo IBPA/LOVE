@@ -3,6 +3,7 @@ Authors:
     Jason Youn - jyoun@ucdavis.edu
 
 Description:
+    Lookup queries on wikipedia and save them.
 
 To-do:
 """
@@ -10,20 +11,16 @@ To-do:
 import ast
 import logging as log
 import os
-import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
 # third party imports
-import numpy as np
 import pandas as pd
 import wikipedia
 
-# local imports
-from utils.config_parser import ConfigParser
-
 NUM_LOGS = 20
+
 
 class WikipediaManager:
     """
@@ -102,6 +99,7 @@ class WikipediaManager:
 
         if save_failed:
             pd_failed.to_csv(save_failed, sep='\t', index=False)
+
 
 if __name__ == '__main__':
     wm = WikipediaManager()

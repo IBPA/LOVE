@@ -57,6 +57,7 @@ class FdcPreprocessManager:
         user specified stopwords to the gensim's default stopwords.
 
         Inputs:
+            section: (str, optional) Section name of the .ini file.
 
         Returns:
             (frozenset) New updated stopwords.
@@ -110,6 +111,16 @@ class FdcPreprocessManager:
         return " ".join(w for w in s.split() if w not in stopwords)
 
     def _custom_stem_text(self, text):
+        """
+        (Private) Custom text stemmer. Compared to the original gensim
+        implementation, it generates before / after stem lookup table.
+
+        Inputs:
+            text: (str) String to process.
+
+        Returns:
+            (str) Stemmed string.
+        """
         text = gensim_utils.to_unicode(text)
         p = PorterStemmer()
 
@@ -129,7 +140,7 @@ class FdcPreprocessManager:
         that will be applied by gpp.preprocess_string().
 
         Inputs:
-            section: 
+            section: (str, optional) Section name of the .ini file.
 
         Returns:
             custom_filters: (list) List of functions.
@@ -174,7 +185,7 @@ class FdcPreprocessManager:
 
         Inputs:
             pd_data: (pd.Series) Data whihc will be used to generate phase.
-            section: 
+            section: (str, optional) Section name of the .ini file.
 
         Returns:
             pd_data: (pd.Series) Input data but using phrases.
@@ -254,6 +265,12 @@ class FdcPreprocessManager:
         return pd_data
 
     def get_stem_lookup_table(self):
+        """
+        Return stemming lookup table.
+
+        Returns:
+            pd_stem: (pd.DataFrame) Stem lookup table.
+        """
         log.info('Generating stemming lookup table...')
 
         pd_stem = pd.DataFrame([self.vocabs]).transpose().reset_index()
