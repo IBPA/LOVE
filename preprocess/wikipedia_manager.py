@@ -23,7 +23,7 @@ import wikipedia
 # local imports
 from utils.config_parser import ConfigParser
 
-NUM_LOGS = 10
+NUM_LOGS = 20
 
 class WikipediaManager:
     """
@@ -38,7 +38,8 @@ class WikipediaManager:
         self.pd_stem_lookup = pd.read_csv(
             stem_lookup_filepath,
             sep='\t',
-            index_col='stemmed')
+            index_col='stemmed',
+            keep_default_na=False)
 
     def decode_query(self, query):
         if '_' in query:
@@ -69,10 +70,9 @@ class WikipediaManager:
         failed_queries = []
 
         num_queries = len(queries)
-        log_every = [(i + 1) * int(num_queries / NUM_LOGS) for i in range(NUM_LOGS)]
+        log_every = [i * int(num_queries / NUM_LOGS) for i in range(NUM_LOGS)]
 
         for idx, query in enumerate(queries):
-
             if idx in log_every:
                 log.info('Processing query {}/{}'.format(idx, num_queries))
 

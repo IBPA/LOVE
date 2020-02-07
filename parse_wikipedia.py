@@ -66,8 +66,6 @@ def main():
         vocabs.extend(row.split(' '))
     vocabs = list(set(vocabs))
 
-    vocabs = vocabs[0:50]
-
     wm = WikipediaManager(
         configparser.getstr('stem_lookup_filepath'))
 
