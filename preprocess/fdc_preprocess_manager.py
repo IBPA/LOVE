@@ -20,6 +20,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 # third party imports
 import gensim.utils as gensim_utils
 from gensim.models.phrases import Phrases, Phraser
+from gensim.parsing.porter import PorterStemmer
 import gensim.parsing.preprocessing as gpp
 import numpy as np
 import pandas as pd
@@ -48,6 +49,9 @@ class FdcPreprocessManager:
             'phrase_model_output_dir', 'directory')
         self.output_dir = self.configparser.getstr(
             'output_dir', 'directory')
+
+
+        self.vocabs = {}
 
     def _generate_custom_stopwords(self, section='filter'):
         """
@@ -107,11 +111,19 @@ class FdcPreprocessManager:
         s = gensim_utils.to_unicode(s)
         return " ".join(w for w in s.split() if w not in stopwords)
 
-    def _custom_preprocess_string(s, filters):
-        s = gensim_utils.to_unicode(s)
-        for f in filters:
-            s = f(s)
-        return s.split()
+    def _custom_stem_text(self, text):
+        text = gensim_utils.to_unicode(text)
+        p = PorterStemmer()
+
+        for word in text.split():
+            stemmed_word = p.stem(word)
+
+            if stemmed_word not in self.vocabs:
+                self.vocabs[stemmed_word] = []
+
+            self.vocabs[stemmed_word].append(word)
+
+        return ' '.join(p.stem(word) for word in text.split())
 
     def _build_custom_filter_list(self, section='filter'):
         """
@@ -154,7 +166,7 @@ class FdcPreprocessManager:
 
         if self.configparser.getbool('stem_text', section):
             log.debug('Stemming text')
-            custom_filters.append(gpp.stem_text)
+            custom_filters.append(self._custom_stem_text)
 
         return custom_filters
 
@@ -243,32 +255,12 @@ class FdcPreprocessManager:
 
         return pd_data
 
-    def get_vocabularies(self, pd_data, before, after):
-        data_list = []
+    def get_stem_lookup_table(self):
+        log.info('Generating stemming lookup table...')
 
-        custom_filters = self._build_custom_filter_list()
-        custom_filters.remove(gpp.stem_text)
+        pd_stem = pd.DataFrame([self.vocabs]).transpose().reset_index()
+        pd_stem = pd_stem.rename(columns={'index': 'stemmed', 0: 'originals'})
+        pd_stem['originals'] = pd_stem['originals'].apply(lambda x: np.unique(x, return_counts=True))
+        pd_stem['originals'] = pd_stem['originals'].apply(lambda x: dict(zip(x[0], x[1])))
 
-        for _, row in pd_data.iterrows():
-            before_vocabs = gpp.preprocess_string(row[before], custom_filters)
-            after_vocabs = row[after].split(' ')
-
-            if len(before_vocabs) == 0:
-                continue
-
-            for vocab in after_vocabs:
-                if '_' in vocab:
-                    ngram = vocab.split('_')
-                    matches = [difflib.get_close_matches(gram, before_vocabs, cutoff=0.3)[0] for gram in ngram]
-                    match = ' '.join(matches)
-                else:
-                    match = difflib.get_close_matches(vocab, before_vocabs, cutoff=0.3)[0]
-
-                data_list.append([vocab, match])
-
-        pd_vocabs = pd.DataFrame(data_list, columns=['preprocessed', 'original'])
-        pd_vocabs = pd_vocabs.groupby('preprocessed')['original'].apply(
-            lambda x: ', '.join(set(list(x)))).reset_index()
-
-
-        return pd_vocabs
+        return pd_stem

@@ -86,18 +86,15 @@ def main():
     pd_processed['concatenated'] = pd_processed[['description', 'ingredients', 'category']].agg(' '.join, axis=1)
     pd_processed['concatenated_preprocessed'] = fpm.preprocess_column(pd_processed['concatenated'])
 
-    # get and save vocabularies
-    pd_vocabs = fpm.get_vocabularies(
-        pd_processed,
-        'concatenated',
-        'concatenated_preprocessed')
+    # get vocabularies and save
+    pd_stem_lookup = fpm.get_stem_lookup_table()
 
-    vocabs_filepath = os.path.join(
+    stem_lookup_filename = os.path.join(
         configparser.getstr('output_dir'),
-        configparser.getstr('vocabulary_filename'))
+        configparser.getstr('stem_lookup_filename'))
 
-    log.info('Saving vocabularies to \'%s\'...', vocabs_filepath)
-    pd_vocabs.to_csv(vocabs_filepath, sep='\t', index=False)
+    log.info('Saving stemming lookup table to \'%s\'...', stem_lookup_filename)
+    pd_stem_lookup.to_csv(stem_lookup_filename, sep='\t', index=False)
 
     # save preprocess final data
     filename_output = os.path.join(
