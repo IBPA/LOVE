@@ -83,9 +83,21 @@ def main():
         configparser.getstr('fdc_preprocess_config_filepath'))
 
     # preprocess columns
-    pd_processed['description_preprocessed'] = fpm.preprocess_column(pd_processed['description'])
-    pd_processed['ingredients_preprocessed'] = fpm.preprocess_column(pd_processed['ingredients'])
-    pd_processed['category_preprocessed'] = fpm.preprocess_column(pd_processed['category'])
+    pd_processed['concatenated'] = pd_processed[['description', 'ingredients', 'category']].agg(' '.join, axis=1)
+    pd_processed['concatenated_preprocessed'] = fpm.preprocess_column(pd_processed['concatenated'])
+
+    # get and save vocabularies
+    pd_vocabs = fpm.get_vocabularies(
+        pd_processed,
+        'concatenated',
+        'concatenated_preprocessed')
+
+    vocabs_filepath = os.path.join(
+        configparser.getstr('output_dir'),
+        configparser.getstr('vocabulary_filename'))
+
+    log.info('Saving vocabularies to \'%s\'...', vocabs_filepath)
+    pd_vocabs.to_csv(vocabs_filepath, sep='\t', index=False)
 
     # save preprocess final data
     filename_output = os.path.join(

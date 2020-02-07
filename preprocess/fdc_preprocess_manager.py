@@ -9,6 +9,7 @@ Description:
 To-do:
 """
 # standard imports
+import difflib
 import logging as log
 import os
 import re
@@ -48,13 +49,12 @@ class FdcPreprocessManager:
         self.output_dir = self.configparser.getstr(
             'output_dir', 'directory')
 
-    def _generate_custom_stopwords(self, which):
+    def _generate_custom_stopwords(self, section='filter'):
         """
         (Private) Generate custom stopwords by adding or removing
         user specified stopwords to the gensim's default stopwords.
 
         Inputs:
-            which: (str) Column name ('description' | 'ingredients' | 'category').
 
         Returns:
             (frozenset) New updated stopwords.
@@ -64,28 +64,28 @@ class FdcPreprocessManager:
         # stopwords to add
         to_add_filename = os.path.join(
             self.data_custom_stopwords_dir,
-            self.configparser.getstr('stopwords_to_add', which))
+            self.configparser.getstr('stopwords_to_add', section))
 
         with open(to_add_filename, 'r') as file:
             to_add_list = file.read().splitlines()
 
         if len(to_add_list) > 0:
-            log.info('Adding custom stopwords %s for %s', to_add_list, which)
+            log.info('Adding custom stopwords %s', to_add_list)
         else:
-            log.info('Not adding any custom stopwords for %s', which)
+            log.info('Not adding any custom stopwords')
 
         # stopwords to remove
         to_remove_filename = os.path.join(
             self.data_custom_stopwords_dir,
-            self.configparser.getstr('stopwords_to_remove', which))
+            self.configparser.getstr('stopwords_to_remove', section))
 
         with open(to_remove_filename, 'r') as file:
             to_remove_list = file.read().splitlines()
 
         if len(to_remove_list) > 0:
-            log.info('Removing stopwords %s for %s', to_remove_list, which)
+            log.info('Removing stopwords %s', to_remove_list)
         else:
-            log.info('Not removing any custom stopwords for %s', which)
+            log.info('Not removing any custom stopword')
 
         # add and remove stopwords
         my_stopwords.extend(to_add_list)
@@ -107,64 +107,70 @@ class FdcPreprocessManager:
         s = gensim_utils.to_unicode(s)
         return " ".join(w for w in s.split() if w not in stopwords)
 
-    def _build_custom_filter_list(self, which):
+    def _custom_preprocess_string(s, filters):
+        s = gensim_utils.to_unicode(s)
+        for f in filters:
+            s = f(s)
+        return s.split()
+
+    def _build_custom_filter_list(self, section='filter'):
         """
         (Private) Build list of filters based on the configuration file
         that will be applied by gpp.preprocess_string().
 
         Inputs:
-            which: (str) Column name ('description' | 'ingredients' | 'category').
+            section: 
 
         Returns:
             custom_filters: (list) List of functions.
         """
         custom_filters = []
 
-        if self.configparser.getbool('lower', which):
-            log.debug('Converting to lower cases for %s', which)
+        if self.configparser.getbool('lower', section):
+            log.debug('Converting to lower cases')
             custom_filters.append(lambda x: x.lower())
 
-        if self.configparser.getbool('strip_punctuation', which):
-            log.debug('Stripping punctuation for %s', which)
+        if self.configparser.getbool('strip_punctuation', section):
+            log.debug('Stripping punctuation')
             custom_filters.append(gpp.strip_punctuation)
 
-        if self.configparser.getbool('strip_multiple_whitespaces', which):
-            log.debug('Stripping multiple whitespaces for %s', which)
+        if self.configparser.getbool('strip_multiple_whitespaces', section):
+            log.debug('Stripping multiple whitespaces')
             custom_filters.append(gpp.strip_multiple_whitespaces)
 
-        if self.configparser.getbool('strip_numeric', which):
-            log.debug('Stripping numeric for %s', which)
+        if self.configparser.getbool('strip_numeric', section):
+            log.debug('Stripping numeric')
             custom_filters.append(gpp.strip_numeric)
 
-        if self.configparser.getbool('remove_stopwords', which):
-            log.debug('Removing stopwords for %s', which)
-            stopwords = self._generate_custom_stopwords(which)
+        if self.configparser.getbool('remove_stopwords', section):
+            log.debug('Removing stopwords')
+            stopwords = self._generate_custom_stopwords(section)
             custom_filters.append(lambda x: self._custom_remove_stopwords(x, stopwords))
 
-        if self.configparser.getbool('strip_short', which):
-            minsize = self.configparser.getint('strip_short_minsize', which)
-            log.debug('Stripping words shorter than %d for %s', minsize, which)
+        if self.configparser.getbool('strip_short', section):
+            minsize = self.configparser.getint('strip_short_minsize', section)
+            log.debug('Stripping words shorter than %d', minsize)
             custom_filters.append(lambda x: gpp.strip_short(x, minsize=minsize))
 
-        if self.configparser.getbool('stem_text', which):
-            log.debug('Stemming text for %s', which)
+        if self.configparser.getbool('stem_text', section):
+            log.debug('Stemming text')
             custom_filters.append(gpp.stem_text)
 
         return custom_filters
 
-    def _generate_phrase(self, pd_data, which):
+    def _generate_phrase(self, pd_data, section='phrase'):
         """
         (Private) Generate phrase using the gensim Phrase detection module.
 
         Inputs:
-            pd_data: (pd.Series) Data which will be used to generate phase.
-            which: (str) Column name ('description' | 'ingredients' | 'category').
+            pd_data: (pd.Series) Data whihc will be used to generate phase.
+            section: 
 
         Returns:
             pd_data: (pd.Series) Input data but using phrases.
         """
-        if self.configparser.getbool('generate_phrase', which):
-            log.info('Generating phrases using the %s...', which)
+        if self.configparser.getbool('generate_phrase', section):
+            log.info('Generating phrases...')
 
             # this is our training data
             sentences = pd_data.tolist()
@@ -172,14 +178,14 @@ class FdcPreprocessManager:
             # detect phrases using the configuration
             model = Phrases(
                 sentences,
-                min_count=self.configparser.getint('min_count', which),
-                threshold=self.configparser.getfloat('threshold', which),
-                max_vocab_size=self.configparser.getint('max_vocab_size', which),
-                progress_per=self.configparser.getint('progress_per', which),
-                scoring=self.configparser.getstr('scoring', which))
+                min_count=self.configparser.getint('min_count', section),
+                threshold=self.configparser.getfloat('threshold', section),
+                max_vocab_size=self.configparser.getint('max_vocab_size', section),
+                progress_per=self.configparser.getint('progress_per', section),
+                scoring=self.configparser.getstr('scoring', section))
 
             # apply trained model to generate phrase
-            log.info('Applying phrase model to the %s...', which)
+            log.info('Applying phrase model...')
             pd_data = pd_data.apply(
                 lambda x: model[x],
                 convert_dtype=False)
@@ -187,9 +193,9 @@ class FdcPreprocessManager:
             # save phrase model
             model_filepath = os.path.join(
                 self.phrase_model_output_dir,
-                self.configparser.getstr('phrase_model_filename', which))
+                self.configparser.getstr('phrase_model_filename', section))
 
-            log.info('Saving %s phrase model to \'%s\'...', which, model_filepath)
+            log.info('Saving phrase model to \'%s\'...', model_filepath)
             model.save(model_filepath)
 
             # dump phrase and its score as text
@@ -202,12 +208,12 @@ class FdcPreprocessManager:
 
             export_filepath = os.path.join(
                 self.output_dir,
-                self.configparser.getstr('phrase_dump_filename', which))
+                self.configparser.getstr('phrase_dump_filename', section))
 
-            log.info('Dumping %s phrases to \'%s\'...', which, export_filepath)
+            log.info('Dumping phrases to \'%s\'...', export_filepath)
             pd_phrase_score.to_csv(export_filepath, sep='\t', index=False)
         else:
-            log.info('Skipping phrase generation for %s...', which)
+            log.info('Skipping phrase generation...')
 
         return pd_data
 
@@ -222,7 +228,7 @@ class FdcPreprocessManager:
             pd_data: (pd.Series) Preprocess data.
         """
         # preprocess using set of filters
-        custom_filters = self._build_custom_filter_list(pd_data.name)
+        custom_filters = self._build_custom_filter_list()
 
         log.info('Applying preprocess filters to the %s...', pd_data.name)
         pd_data = pd_data.apply(
@@ -230,9 +236,39 @@ class FdcPreprocessManager:
             convert_dtype=False)
 
         # generate phrase based on the configuration
-        pd_data = self._generate_phrase(pd_data, pd_data.name)
+        pd_data = self._generate_phrase(pd_data)
 
         # join the list of words into space delimited string
         pd_data = pd_data.apply(lambda x: ' '.join(x))
 
         return pd_data
+
+    def get_vocabularies(self, pd_data, before, after):
+        data_list = []
+
+        custom_filters = self._build_custom_filter_list()
+        custom_filters.remove(gpp.stem_text)
+
+        for _, row in pd_data.iterrows():
+            before_vocabs = gpp.preprocess_string(row[before], custom_filters)
+            after_vocabs = row[after].split(' ')
+
+            if len(before_vocabs) == 0:
+                continue
+
+            for vocab in after_vocabs:
+                if '_' in vocab:
+                    ngram = vocab.split('_')
+                    matches = [difflib.get_close_matches(gram, before_vocabs, cutoff=0.3)[0] for gram in ngram]
+                    match = ' '.join(matches)
+                else:
+                    match = difflib.get_close_matches(vocab, before_vocabs, cutoff=0.3)[0]
+
+                data_list.append([vocab, match])
+
+        pd_vocabs = pd.DataFrame(data_list, columns=['preprocessed', 'original'])
+        pd_vocabs = pd_vocabs.groupby('preprocessed')['original'].apply(
+            lambda x: ', '.join(set(list(x)))).reset_index()
+
+
+        return pd_vocabs

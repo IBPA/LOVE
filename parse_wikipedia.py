@@ -58,14 +58,11 @@ def main():
     pd_processed = pd.read_csv('./output/preprocessed.txt', sep='\t', index_col='fdc_id')
     pd_processed.fillna('', inplace=True)
 
-    print(pd_processed.head())
-
     queries = []
-
     for row in pd_processed['description_preprocessed'].tolist():
         queries.extend(row.split(' '))
 
-    queries = queries[0:30]
+    # queries = queries[0:30]
 
     wm = WikipediaManager(queries)
     wm.get_summary(
