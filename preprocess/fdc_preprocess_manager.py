@@ -9,7 +9,6 @@ Description:
 To-do:
 """
 # standard imports
-import difflib
 import logging as log
 import os
 import re
@@ -49,7 +48,6 @@ class FdcPreprocessManager:
             'phrase_model_output_dir', 'directory')
         self.output_dir = self.configparser.getstr(
             'output_dir', 'directory')
-
 
         self.vocabs = {}
 
@@ -262,5 +260,7 @@ class FdcPreprocessManager:
         pd_stem = pd_stem.rename(columns={'index': 'stemmed', 0: 'originals'})
         pd_stem['originals'] = pd_stem['originals'].apply(lambda x: np.unique(x, return_counts=True))
         pd_stem['originals'] = pd_stem['originals'].apply(lambda x: dict(zip(x[0], x[1])))
+        pd_stem['originals'] = pd_stem['originals'].apply(
+            lambda x: {k: v for k, v in sorted(x.items(), key=lambda item: item[1], reverse=True)})
 
         return pd_stem

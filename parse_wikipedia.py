@@ -10,6 +10,7 @@ To-do:
 """
 # standard imports
 import argparse
+import ast
 import logging as log
 import os
 import sys
@@ -58,14 +59,15 @@ def main():
     pd_processed = pd.read_csv('./output/preprocessed.txt', sep='\t', index_col='fdc_id')
     pd_processed.fillna('', inplace=True)
 
-    queries = []
-    for row in pd_processed['description_preprocessed'].tolist():
-        queries.extend(row.split(' '))
+    vocabs = []
+    for row in pd_processed['concatenated_preprocessed'].tolist():
+        vocabs.extend(row.split(' '))
+    vocabs = list(set(vocabs))
 
-    # queries = queries[0:30]
 
-    wm = WikipediaManager(queries)
+    wm = WikipediaManager()
     wm.get_summary(
+        vocabs,
         './output/summaries.txt',
         './output/failed.txt')
 

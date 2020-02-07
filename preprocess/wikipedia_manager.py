@@ -7,6 +7,7 @@ Description:
 To-do:
 """
 # standard imports
+import ast
 import logging as log
 import os
 import re
@@ -28,40 +29,70 @@ class WikipediaManager:
     """
     """
 
-    def __init__(self, queries, delim='_'):
+    def __init__(self):
         """
         Class initializer.
 
         Inputs:
         """
-        if delim:
-            self.queries = [query.replace(delim, ' ') for query in queries]
+        self.pd_stem_lookup = pd.read_csv(
+            '/home/jyoun/Jason/Research/FoodOntology/output/stem_lookup.txt',
+            sep='\t',
+            index_col='stemmed')
+
+    def decode_query(self, query):
+        if '_' in query:
+            elements = query.split('_')
+            element_candidates = []
+
+            if len(elements) > 2:
+                raise ValueError('Unable to support n-grams where n > 2!')
+
+            for element in elements:
+                element_candidates.append(ast.literal_eval(
+                    self.pd_stem_lookup.loc[element, 'originals']))
+
+            candidates = {' '.join([k1, k2]): v1 * v2
+                          for k1, v1 in element_candidates[0].items()
+                          for k2, v2 in element_candidates[1].items()}
+            candidates = {k: v for k, v in sorted(candidates.items(), key=lambda item: item[1], reverse=True)}
+            candidates = list(candidates.keys())
+
         else:
-            self.queries = queries
+            candidates = ast.literal_eval(self.pd_stem_lookup.loc[query, 'originals'])
+            candidates = list(candidates.keys())
 
-        self.queries = list(set(self.queries))
-        print('Loaded {} quries'.format(len(self.queries)))
+        return candidates
 
-    def get_summary(self, save_summaries=None, save_failed=None):
+    def get_summary(self, queries, num_try=3, save_summaries=None, save_failed=None):
         summaries = []
         failed_queries = []
 
-        num_queries = len(self.queries)
+        num_queries = len(queries)
         log_every = [(i + 1) * int(num_queries / NUM_LOGS) for i in range(NUM_LOGS)]
 
-        for idx, query in enumerate(self.queries):
+        for idx, query in enumerate(queries):
+
             if idx in log_every:
                 print('Processing query {}/{}'.format(idx, num_queries))
 
-            try:
-                summary = wikipedia.WikipediaPage(query).summary.replace('\n', '')
-                summaries.append([query, summary])
-            except:
-                suggestion = wikipedia.suggest(query)
-                failed_queries.append([query, suggestion if suggestion else ''])
+            query_candidates = self.decode_query(query)
 
-        pd_summaries = pd.DataFrame(summaries, columns=['query', 'summary'])
-        pd_failed = pd.DataFrame(failed_queries, columns=['query', 'suggestion'])
+            success_flag = False
+            for candidate in query_candidates[0:num_try]:
+                try:
+                    summary = wikipedia.WikipediaPage(candidate).summary.replace('\n', ' ')
+                    summaries.append([query, candidate, summary])
+                    success_flag = True
+                    break
+                except:
+                    pass
+
+            if not success_flag:
+                failed_queries.append([query, ', '.join(query_candidates)])
+
+        pd_summaries = pd.DataFrame(summaries, columns=['query', 'matching candidate', 'summary'])
+        pd_failed = pd.DataFrame(failed_queries, columns=['query', 'failed candidates'])
 
         if save_summaries:
             pd_summaries.to_csv(save_summaries, sep='\t', index=False)
@@ -70,5 +101,8 @@ class WikipediaManager:
             pd_failed.to_csv(save_failed, sep='\t', index=False)
 
 if __name__ == '__main__':
-    wm = WikipediaManager(['chow_mein', 'dumpling', 'efefsfsefesd', 'swiss missy', 'obama'])
-    wm.get_summary()
+    wm = WikipediaManager()
+    wm.get_summary(
+        ['graham_cracker', 'chow_mein', 'dulg', 'chocol', 'dumpl'],
+        save_summaries='/home/jyoun/Jason/Research/FoodOntology/output/summaries.txt',
+        save_failed='/home/jyoun/Jason/Research/FoodOntology/output/failed.txt')
