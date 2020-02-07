@@ -42,3 +42,7 @@ sed -i 's|'$from'|'$to'|g' "$root_dir/config/prepare.ini"
 # update paths in preprocess.ini
 echo "Updating filepaths in 'preprocess.ini'..."
 sed -i 's|'$from'|'$to'|g' "$root_dir/config/preprocess.ini"
+
+# update paths in wikipedia.ini
+echo "Updating filepaths in 'wikipedia.ini'..."
+sed -i 's|'$from'|'$to'|g' "$root_dir/config/wikipedia.ini"

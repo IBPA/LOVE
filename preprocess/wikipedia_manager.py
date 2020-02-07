@@ -29,14 +29,14 @@ class WikipediaManager:
     """
     """
 
-    def __init__(self):
+    def __init__(self, stem_lookup_filepath):
         """
         Class initializer.
 
         Inputs:
         """
         self.pd_stem_lookup = pd.read_csv(
-            '/home/jyoun/Jason/Research/FoodOntology/output/stem_lookup.txt',
+            stem_lookup_filepath,
             sep='\t',
             index_col='stemmed')
 
@@ -74,7 +74,7 @@ class WikipediaManager:
         for idx, query in enumerate(queries):
 
             if idx in log_every:
-                print('Processing query {}/{}'.format(idx, num_queries))
+                log.info('Processing query {}/{}'.format(idx, num_queries))
 
             query_candidates = self.decode_query(query)
 
@@ -93,6 +93,9 @@ class WikipediaManager:
 
         pd_summaries = pd.DataFrame(summaries, columns=['query', 'matching candidate', 'summary'])
         pd_failed = pd.DataFrame(failed_queries, columns=['query', 'failed candidates'])
+
+        log.info('Successfully got wikipedia summaries for %d queries', pd_summaries.shape[0])
+        log.info('Failed to get wikipedia summaries for %d queries', pd_failed.shape[0])
 
         if save_summaries:
             pd_summaries.to_csv(save_summaries, sep='\t', index=False)

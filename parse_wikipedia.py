@@ -26,7 +26,7 @@ from utils.config_parser import ConfigParser
 from utils.set_logging import set_logging
 
 # global variables
-DEFAULT_CONFIG_FILE = './config/prepare.ini'
+DEFAULT_CONFIG_FILE = './config/wikipedia.ini'
 
 
 def parse_argument():
@@ -36,12 +36,12 @@ def parse_argument():
     Returns:
         - parsed arguments
     """
-    parser = argparse.ArgumentParser(description='Prepare data.')
+    parser = argparse.ArgumentParser(description='Prepare the WikiPedia data.')
 
     parser.add_argument(
         '--config_file',
         default=DEFAULT_CONFIG_FILE,
-        help='Path to the .ini configuration file for processing the FDC data.')
+        help='Path to the .ini configuration file.')
 
     return parser.parse_args()
 
@@ -55,8 +55,10 @@ def main():
     args = parse_argument()
     configparser = ConfigParser(args.config_file)
 
-
-    pd_processed = pd.read_csv('./output/preprocessed.txt', sep='\t', index_col='fdc_id')
+    pd_processed = pd.read_csv(
+        configparser.getstr('input_filepath'),
+        sep='\t',
+        index_col='fdc_id')
     pd_processed.fillna('', inplace=True)
 
     vocabs = []
@@ -64,12 +66,16 @@ def main():
         vocabs.extend(row.split(' '))
     vocabs = list(set(vocabs))
 
+    vocabs = vocabs[0:50]
 
-    wm = WikipediaManager()
+    wm = WikipediaManager(
+        configparser.getstr('stem_lookup_filepath'))
+
     wm.get_summary(
         vocabs,
-        './output/summaries.txt',
-        './output/failed.txt')
+        configparser.getint('num_try'),
+        configparser.getstr('summaries_filepath'),
+        configparser.getstr('failed_filepath'),)
 
 if __name__ == '__main__':
     main()
