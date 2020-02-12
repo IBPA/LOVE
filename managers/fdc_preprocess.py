@@ -152,6 +152,11 @@ class FdcPreprocessManager:
             log.debug('Converting to lower cases')
             custom_filters.append(lambda x: x.lower())
 
+        if self.configparser.getbool('map_synonym', section):
+            log.debug('Mapping synonym')
+            map_table = self._load_synonym_map(section)
+            custom_filters.append(lambda x: self._map_synonyms(x, map_table))
+
         if self.configparser.getbool('strip_punctuation', section):
             log.debug('Stripping punctuation')
             custom_filters.append(gpp.strip_punctuation)
@@ -159,11 +164,6 @@ class FdcPreprocessManager:
         if self.configparser.getbool('strip_multiple_whitespaces', section):
             log.debug('Stripping multiple whitespaces')
             custom_filters.append(gpp.strip_multiple_whitespaces)
-
-        if self.configparser.getbool('map_synonym', section):
-            log.debug('Mapping synonym')
-            map_table = self._load_synonym_map(section)
-            custom_filters.append(lambda x: self._map_synonyms(x, map_table))
 
         if self.configparser.getbool('strip_numeric', section):
             log.debug('Stripping numeric')
