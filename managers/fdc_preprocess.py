@@ -11,6 +11,7 @@ To-do:
 # standard imports
 import logging as log
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
@@ -42,6 +43,18 @@ class FdcPreprocessManager:
         self.configparser = ConfigParser(config_filepath)
 
         self.vocabs = {}
+
+    def _load_synonym_map(self, section='filter'):
+        pd_map = pd.read_csv(
+            self.configparser.getstr('synonym_map', section),
+            sep='\t',
+            index_col='from')
+
+        return pd_map['to'].to_dict()
+
+    def _map_synonyms(self, text, table):
+        regex_str = '|'.join(r'\b%s\b' % re.escape(s) for s in table)
+        return re.sub(regex_str, lambda x: table[x.group(0)], text)
 
     def _generate_custom_stopwords(self, section='filter'):
         """
@@ -146,6 +159,11 @@ class FdcPreprocessManager:
         if self.configparser.getbool('strip_multiple_whitespaces', section):
             log.debug('Stripping multiple whitespaces')
             custom_filters.append(gpp.strip_multiple_whitespaces)
+
+        if self.configparser.getbool('map_synonym', section):
+            log.debug('Mapping synonym')
+            map_table = self._load_synonym_map(section)
+            custom_filters.append(lambda x: self._map_synonyms(x, map_table))
 
         if self.configparser.getbool('strip_numeric', section):
             log.debug('Stripping numeric')

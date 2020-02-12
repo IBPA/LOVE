@@ -1,0 +1,11 @@
+from	to
+no	without
+non	without
+jel	jello
+gf	gluten free
+bht 	butylated hydroxytoluene
+bha	butylated hydroxyanisole
+org	organic
+whl	whole
+fdc	ffdca
+fd c	ffdca

@@ -10,6 +10,8 @@ quarts
 fl
 pc
 pcs
+piece
+pieces
 day
 add
 added

@@ -58,11 +58,7 @@ def main():
         configparser.getstr('fdc_process_config_filepath'))
 
     # join the FDC data and save it
-    joined_filepath = os.path.join(
-        configparser.getstr('output_dir'),
-        configparser.getstr('joined_fdc_filename'))
-
-    pd_processed = fdc_dm.join(joined_filepath)
+    pd_processed = fdc_dm.join(configparser.getstr('joined_fdc_filename'))
 
     # do additional processing
     pd_processed = fdc_dm.filter(pd_processed)
@@ -71,12 +67,9 @@ def main():
     pd_processed = fdc_dm.drop_columns(pd_processed)
 
     # do final processing and save the final file
-    processed_filepath = os.path.join(
-        configparser.getstr('output_dir'),
+    log.info('Saving final processed FDC data to \'%s\'...',
         configparser.getstr('final_fdc_filename'))
-
-    log.info('Saving final processed FDC data to \'%s\'...', processed_filepath)
-    pd_processed.to_csv(processed_filepath, sep='\t')
+    pd_processed.to_csv(configparser.getstr('final_fdc_filename'), sep='\t')
 
     # init FDC preprocess manager
     fpm = FdcPreprocessManager(
@@ -89,20 +82,18 @@ def main():
     # get vocabularies and save
     pd_stem_lookup = fpm.get_stem_lookup_table()
 
-    stem_lookup_filename = os.path.join(
-        configparser.getstr('output_dir'),
+    log.info('Saving stemming lookup table to \'%s\'...',
         configparser.getstr('stem_lookup_filename'))
 
-    log.info('Saving stemming lookup table to \'%s\'...', stem_lookup_filename)
-    pd_stem_lookup.to_csv(stem_lookup_filename, sep='\t', index=False)
+    pd_stem_lookup.to_csv(
+        configparser.getstr('stem_lookup_filename'),
+        sep='\t',
+        index=False)
 
     # save preprocess final data
-    filename_output = os.path.join(
-        configparser.getstr('output_dir'),
+    log.info('Saving preprocessed FDC data to \'%s\'...',
         configparser.getstr('preprocessed_filename'))
-
-    log.info('Saving preprocessed FDC data to \'%s\'...', filename_output)
-    pd_processed.to_csv(filename_output, sep='\t')
+    pd_processed.to_csv(configparser.getstr('preprocessed_filename'), sep='\t')
 
 
 if __name__ == '__main__':
