@@ -15,9 +15,9 @@ import os
 import sys
 
 # local imports
-from preprocess.fdc_data_manager import FdcDataManager
-from preprocess.fdc_preprocess_manager import FdcPreprocessManager
-from preprocess.wikipedia_manager import WikipediaManager
+from managers.fdc_data import FdcDataManager
+from managers.fdc_preprocess import FdcPreprocessManager
+from managers.wikipedia import WikipediaManager
 from utils.config_parser import ConfigParser
 from utils.set_logging import set_logging
 

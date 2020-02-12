@@ -35,14 +35,7 @@ else # invalid option
 	exit
 fi
 
-# update paths in prepare.ini
-echo "Updating filepaths in 'prepare.ini'..."
-sed -i 's|'$from'|'$to'|g' "$root_dir/config/prepare.ini"
-
-# update paths in preprocess.ini
-echo "Updating filepaths in 'preprocess.ini'..."
-sed -i 's|'$from'|'$to'|g' "$root_dir/config/preprocess.ini"
-
-# update paths in wikipedia.ini
-echo "Updating filepaths in 'wikipedia.ini'..."
-sed -i 's|'$from'|'$to'|g' "$root_dir/config/wikipedia.ini"
+for filename in "$root_dir/config"/*.ini; do
+	echo "Updating filepaths in '$filename'..."
+	sed -i 's|'$from'|'$to'|g' $filename
+done

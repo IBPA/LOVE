@@ -1,5 +1,6 @@
 """
 Authors:
+    Jason Youn - jyoun@ucdavis.edu
     Simon Kit Sang, Chu - kschu@ucdavis.edu
 
 Description:
@@ -8,83 +9,79 @@ Description:
 To-do:
 """
 # standard imports
+import argparse
+import logging as log
 import os
-import random
-import numpy as np
+import sys
 
 # third party imports
 import pandas as pd
 import gensim
 
-from gensim.models.callbacks import CallbackAny2Vec
+# local imports
+from managers.word2vec import Word2VecManager
+from utils.config_parser import ConfigParser
+from utils.set_logging import set_logging
+
+# global variables
+DEFAULT_CONFIG_FILE = './config/word2vec_fdc.ini'
 
 
-class EpochLogger(CallbackAny2Vec):
-    '''Callback to log information about training'''
-    def __init__(self):
-        self.epoch = 0
+def parse_argument():
+    """
+    Parse input arguments.
 
-    def on_epoch_begin(self, model):
-        print("Epoch #{} start".format(self.epoch))
+    Returns:
+        - parsed arguments
+    """
+    parser = argparse.ArgumentParser(description='Train word2vec.')
 
-    def on_epoch_end(self, model):
-        print("Epoch #{} end".format(self.epoch))
-        self.epoch += 1
+    parser.add_argument(
+        '--config_file',
+        default=DEFAULT_CONFIG_FILE,
+        help='Path to the .ini configuration file.')
+
+    return parser.parse_args()
 
 
 def main():
     """
     Main function.
     """
+    # set log, parse args, and read configuration
+    set_logging()
+    args = parse_argument()
+    configparser = ConfigParser(args.config_file)
 
-    # settings
-    preprocess_dir = '/home/jyoun/Jason/Research/FoodOntology/output'
-    filename_token = os.path.join(preprocess_dir, 'preprocessed.txt')
+    # load data to train with
+    sentence_column = configparser.getstr('sentence_column')
 
-    model_dir = '/home/jyoun/Jason/Research/FoodOntology/data/word2vec'
-    filename_model = os.path.join(model_dir, 'modelfile')
-    flag_retrain = True
+    pd_data = pd.read_csv(
+        configparser.getstr('input_filepath'),
+        sep='\t')
 
-    # model hyperparameters
-    hidden_layer_size = 24
-    window_size = 100
-    min_count = 10
-    workers_num = 4
-    epochs = 100
+    pd_data.fillna('', inplace=True)
+    pd_data = pd_data[pd_data[sentence_column] != '']
 
-    # load tokens
-    pd_token = pd.read_csv(filename_token, sep='\t', index_col='fdc_id')
-    pd_token['token'] = pd_token['description_preprocessed']
-    pd_token = pd_token[pd_token['token'] != '']
-    pd_token.fillna('', inplace=True)
+    # use specified column as sentences
+    sentences = pd_data[sentence_column].tolist()
+    sentences = [sentence.split() for sentence in sentences]
 
-    sentences = []
-    for tokens in pd_token['token']:
-        sentences.append(tokens.split())
+    # init word2vec manager
+    w2vm = Word2VecManager(args.config_file)
 
-    epoch_logger = EpochLogger()
-
-    # train word2vec
-    if os.path.exists(filename_model) and not flag_retrain:
-        word2vec = gensim.models.Word2Vec.load(filename_model)
+    # start training and load pre-training data if prompted
+    if configparser.getbool('pre_train'):
+        pretrained = configparser.getstr('pre_trained_vectors')
     else:
-        word2vec = gensim.models.Word2Vec(
-            size=hidden_layer_size,
-            window=window_size,
-            min_count=min_count,
-            workers=workers_num,
-            callbacks=[epoch_logger],
-            iter=1)
+        pretrained = None
 
-        word2vec.build_vocab(sentences)
+    w2vm.train(sentences, pretrained=pretrained)
 
-        word2vec.train(
-            sentences,
-            total_examples=len(sentences),
-            epochs=epochs)
-
-        word2vec.save(filename_model)
-
+    # save word embeddings and model
+    w2vm.save_model(configparser.getstr('model_saveto'))
+    w2vm.save_vectors(configparser.getstr('vectors_saveto'))
+    w2vm.save_loss(configparser.getstr('loss_saveto'))
 
 if __name__ == '__main__':
     main()

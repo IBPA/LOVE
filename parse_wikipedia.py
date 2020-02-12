@@ -19,9 +19,9 @@ import sys
 import pandas as pd
 
 # local imports
-from preprocess.fdc_data_manager import FdcDataManager
-from preprocess.fdc_preprocess_manager import FdcPreprocessManager
-from preprocess.wikipedia_manager import WikipediaManager
+from managers.fdc_data import FdcDataManager
+from managers.fdc_preprocess import FdcPreprocessManager
+from managers.wikipedia import WikipediaManager
 from utils.config_parser import ConfigParser
 from utils.set_logging import set_logging
 
@@ -72,12 +72,25 @@ def main():
     wm = WikipediaManager(
         configparser.getstr('stem_lookup_filepath'))
 
-    wm.get_summary(
+    pd_summary, _ = wm.get_summary(
         vocabs,
         configparser.getint('num_try'),
         configparser.getstr('summaries_filepath'),
         configparser.getstr('failed_filepath'),)
 
+    # apply same preprocessing done to the FDC data
+    fpm = FdcPreprocessManager(
+        configparser.getstr('preprocess_config'))
+
+    # preprocess columns
+    pd_summary['summary_preprocessed'] = fpm.preprocess_column(
+        pd_summary['summary'],
+        load_model=True)
+
+    output_filepath = configparser.getstr('preprocessed_output')
+
+    log.info('Saving preprocessed wikipedia data to %s...', output_filepath)
+    pd_summary.to_csv(output_filepath, sep='\t', index=False)
 
 if __name__ == '__main__':
     main()
