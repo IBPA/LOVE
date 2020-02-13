@@ -7,3 +7,4 @@ argparse==1.1
 configparser==3.5.0
 gensim==3.8.1
 cython==0.29.14
+pattern==3.6
