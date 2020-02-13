@@ -77,18 +77,23 @@ class Word2VecManager():
 
         log.info('Building vocabularies...')
         self.model.build_vocab(sentences)
+        total_examples = self.model.corpus_count
 
         if pretrained:
             original_vocabs = self.model.wv.vocab.keys()
             pretrained_vocabs = KeyedVectors.load_word2vec_format(pretrained).vocab.keys()
             common_vocabs = list(set(original_vocabs) & set(pretrained_vocabs))
-
             log.info('Intersecting %d common vocabularies for transfer learning', len(common_vocabs))
+
+            if self.configparser.getbool('pre_train_update_vocab'):
+                log.info('Updating vocabularies using vocabs from pre-trained data')
+                self.model.build_vocab([list(pretrained_vocabs)], update=True, min_count=1)
+
             self.model.intersect_word2vec_format(pretrained, lockf=1.0)
 
         self.model.train(
             sentences,
-            total_examples=self.model.corpus_count,
+            total_examples=total_examples,
             epochs=self.configparser.getint('epochs'),
             compute_loss=True)
 

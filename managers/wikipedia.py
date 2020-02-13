@@ -26,43 +26,15 @@ class WikipediaManager:
     """
     """
 
-    def __init__(self, stem_lookup_filepath):
+    def __init__(self):
         """
         Class initializer.
 
         Inputs:
         """
-        self.pd_stem_lookup = pd.read_csv(
-            stem_lookup_filepath,
-            sep='\t',
-            index_col='stemmed',
-            keep_default_na=False)
+        pass
 
-    def decode_query(self, query):
-        if '_' in query:
-            elements = query.split('_')
-            element_candidates = []
-
-            if len(elements) > 2:
-                raise ValueError('Unable to support n-grams where n > 2!')
-
-            for element in elements:
-                element_candidates.append(ast.literal_eval(
-                    self.pd_stem_lookup.loc[element, 'originals']))
-
-            candidates = {' '.join([k1, k2]): v1 * v2
-                          for k1, v1 in element_candidates[0].items()
-                          for k2, v2 in element_candidates[1].items()}
-            candidates = {k: v for k, v in sorted(candidates.items(), key=lambda item: item[1], reverse=True)}
-            candidates = list(candidates.keys())
-
-        else:
-            candidates = ast.literal_eval(self.pd_stem_lookup.loc[query, 'originals'])
-            candidates = list(candidates.keys())
-
-        return candidates
-
-    def get_summary(self, queries, num_try, prev_summary=None, prev_failed=None):
+    def get_summary(self, queries, prev_summary=None, prev_failed=None):
 
         if prev_summary and prev_failed:
             log.info('Reusing previous summaries.')
@@ -90,23 +62,14 @@ class WikipediaManager:
             if idx in log_every:
                 log.info('Processing query {}/{}'.format(idx, num_queries))
 
-            query_candidates = self.decode_query(query)
+            try:
+                summary = wikipedia.WikipediaPage(query).summary.replace('\n', ' ')
+                summaries.append([query, summary])
+            except:
+                failed_queries.append([query])
 
-            success_flag = False
-            for candidate in query_candidates[0:num_try]:
-                try:
-                    summary = wikipedia.WikipediaPage(candidate).summary.replace('\n', ' ')
-                    summaries.append([query, candidate, summary])
-                    success_flag = True
-                    break
-                except:
-                    pass
-
-            if not success_flag:
-                failed_queries.append([query, ', '.join(query_candidates)])
-
-        pd_summaries = pd.DataFrame(summaries, columns=['query', 'matching candidate', 'summary'])
-        pd_failed = pd.DataFrame(failed_queries, columns=['query', 'failed candidates'])
+        pd_summaries = pd.DataFrame(summaries, columns=['query', 'summary'])
+        pd_failed = pd.DataFrame(failed_queries, columns=['query'])
 
         if prev_summary and prev_failed:
             pd_summaries = pd_summaries.append(pd_prev_summaries)

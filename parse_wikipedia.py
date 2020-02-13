@@ -55,21 +55,12 @@ def main():
     args = parse_argument()
     configparser = ConfigParser(args.config_file)
 
-    # read preprocessed FDC data
-    pd_processed = pd.read_csv(
-        configparser.getstr('input_filepath'),
-        sep='\t',
-        index_col='fdc_id')
-    pd_processed.fillna('', inplace=True)
-
-    # build vocabulary list
-    vocabs = []
-    for row in pd_processed['concatenated_preprocessed'].tolist():
-        vocabs.extend(row.split(' '))
-    vocabs = list(set(vocabs))
+    # read FDC vocabs
+    with open(configparser.getstr('input_filepath'), 'r') as file:
+        vocabs = file.read().splitlines()
 
     # get summaries of the wikipedia entry
-    wm = WikipediaManager(configparser.getstr('stem_lookup_filepath'))
+    wm = WikipediaManager()
 
     # check if we're gonna reuse the previous results
     if configparser.getbool('reuse_previous'):
@@ -81,7 +72,6 @@ def main():
 
     pd_summary, pd_failed = wm.get_summary(
         vocabs,
-        configparser.getint('num_try'),
         prev_summary=prev_summary,
         prev_failed=prev_failed)
 

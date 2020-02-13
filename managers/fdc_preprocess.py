@@ -19,7 +19,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 # third party imports
 import gensim.utils as gensim_utils
 from gensim.models.phrases import Phrases, Phraser
-from gensim.parsing.porter import PorterStemmer
 import gensim.parsing.preprocessing as gpp
 import numpy as np
 import pandas as pd
@@ -41,8 +40,6 @@ class FdcPreprocessManager:
             config_filepath: (str) Configuration filepath.
         """
         self.configparser = ConfigParser(config_filepath)
-
-        self.vocabs = {}
 
     def _load_synonym_map(self, section='filter'):
         pd_map = pd.read_csv(
@@ -111,29 +108,12 @@ class FdcPreprocessManager:
         s = gensim_utils.to_unicode(s)
         return " ".join(w for w in s.split() if w not in stopwords)
 
-    def _custom_stem_text(self, text):
-        """
-        (Private) Custom text stemmer. Compared to the original gensim
-        implementation, it generates before / after stem lookup table.
+    def _custom_lemmatize(self, text):
+        result = gensim_utils.lemmatize(text)
+        result = b' '.join(result).decode('utf-8')
+        result = re.sub(r'/[^\s]+', '', result)
 
-        Inputs:
-            text: (str) String to process.
-
-        Returns:
-            (str) Stemmed string.
-        """
-        text = gensim_utils.to_unicode(text)
-        p = PorterStemmer()
-
-        for word in text.split():
-            stemmed_word = p.stem(word)
-
-            if stemmed_word not in self.vocabs:
-                self.vocabs[stemmed_word] = []
-
-            self.vocabs[stemmed_word].append(word)
-
-        return ' '.join(p.stem(word) for word in text.split())
+        return result
 
     def _build_custom_filter_list(self, section='filter'):
         """
@@ -179,9 +159,9 @@ class FdcPreprocessManager:
             log.debug('Stripping words shorter than %d', minsize)
             custom_filters.append(lambda x: gpp.strip_short(x, minsize=minsize))
 
-        if self.configparser.getbool('stem_text', section):
-            log.debug('Stemming text')
-            custom_filters.append(self._custom_stem_text)
+        if self.configparser.getbool('lemmatize', section):
+            log.debug('Lemmatizing text')
+            custom_filters.append(self._custom_lemmatize)
 
         return custom_filters
 
@@ -277,20 +257,16 @@ class FdcPreprocessManager:
 
         return pd_data
 
-    def get_stem_lookup_table(self):
-        """
-        Return stemming lookup table.
+    def get_vocabs(self, pd_data):
+        log.info('Getting all vocabs...')
 
-        Returns:
-            pd_stem: (pd.DataFrame) Stem lookup table.
-        """
-        log.info('Generating stemming lookup table...')
+        vocabs = []
+        for row in pd_data.tolist():
+            vocabs.extend(row.split(' '))
 
-        pd_stem = pd.DataFrame([self.vocabs]).transpose().reset_index()
-        pd_stem = pd_stem.rename(columns={'index': 'stemmed', 0: 'originals'})
-        pd_stem['originals'] = pd_stem['originals'].apply(lambda x: np.unique(x, return_counts=True))
-        pd_stem['originals'] = pd_stem['originals'].apply(lambda x: dict(zip(x[0], x[1])))
-        pd_stem['originals'] = pd_stem['originals'].apply(
-            lambda x: {k: v for k, v in sorted(x.items(), key=lambda item: item[1], reverse=True)})
+        vocabs = list(set(vocabs))
+        vocabs = sorted(vocabs, key=str.lower)
 
-        return pd_stem
+        log.info('Got %d unique vocabularies', len(vocabs))
+
+        return vocabs
