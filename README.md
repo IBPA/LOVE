@@ -33,10 +33,24 @@ cython==0.29.14
 pattern==3.6
 ```
 
-You also need to download some data files.
+You also need to download some data files and place them in appropriate places.
 
+1. FDC data
 ```
-Data download instructions go here.
+cd ./data/FDC
+./download_fdc.sh
+```
+
+2. GloVe 6B pre-trained weights. When prompted for a password after the scp command, enter the following: sc!@#$
+```
+cd ./data/pretrain
+./download_convert_glove.sh
+```
+
+3. Word2Vec model and the actual word embeddings.
+```
+cd ./data/model
+
 ```
 
 ### Installing

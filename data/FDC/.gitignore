@@ -4,7 +4,6 @@
 # except for these files
 !.gitignore
 !download_fdc.sh
-!config.sh
 
 # even if they're in subdirectories
 !*/
