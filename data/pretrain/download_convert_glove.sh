@@ -12,12 +12,11 @@ glove_6b_download_url="$glove_base_url/$glove_6b_filename"
 # import functions
 . ../../utils/utilities.sh
 
-# download GloVe 6B dataset, extract, and remove .zip file
+# download GloVe 6B dataset, extract
 if ! dir_exists_and_is_not_empty $glove_6b_dir; then
-	# echo "Downloading FDC all foods dataset..."
-	# wget $glove_6b_download_url
+	echo "Downloading GloVe.6B dataset..."
+	wget $glove_6b_download_url
 	unzip $glove_6b_filename -d $glove_6b_dir
-	rm $glove_6b_filename
 fi
 
 # convert GloVe format to Word2Vec format

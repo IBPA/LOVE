@@ -18,7 +18,7 @@ Following is a short description of each directory under the root folder.
  -->
 ### Prerequisites
 
-In addition to Python 3.6, following Python libraries are required.
+In addition to Python 3.6+, following Python libraries are required.
 
 ```
 numpy==1.16.3
@@ -33,29 +33,7 @@ cython==0.29.14
 pattern==3.6
 ```
 
-You also need to download some data files and place them in appropriate places.
-
-1. FDC data
-```
-cd ./data/FDC
-./download_fdc.sh
-```
-
-2. GloVe 6B pre-trained weights. When prompted for a password after the scp command, enter the following: sc!@#$
-```
-cd ./data/pretrain
-./download_convert_glove.sh
-```
-
-3. Word2Vec model and the actual word embeddings.
-```
-cd ./data/model
-
-```
-
-### Installing
-
-Install the required Python libraries.
+You can optionally use pip3 to install the required Python libraries.
 
 ```
 pip3 install -r requirements.txt
@@ -65,6 +43,35 @@ Python package ```pattern``` depends on ```libmysqlclient-dev```. For Debian / U
 
 ```
 sudo apt-get install libmysqlclient-dev
+```
+
+### Downloading Data
+You also need to download some data files and place them in appropriate places.
+
+1. FDC data.
+```
+cd ./data/FDC
+./download_fdc.sh
+```
+
+2. GloVe 6B pre-trained weights. This downloads the word embeddings in GloVe format and converts them to Word2Vec compatible format.
+```
+cd ./data/pretrain
+./download_convert_glove.sh
+```
+
+3. (Optional) Word2Vec models and the actual word embeddings. Use the following password when prompted: sc!@#$
+```
+cd ./data/model
+scp jyoun@tagkopouloslab.ucdavis.edu:/home/jyoun/FoodData/model.zip .
+unzip model.zip
+```
+
+4. (Optional) Output files. se the following password when prompted: sc!@#$
+```
+cd ./output
+scp jyoun@tagkopouloslab.ucdavis.edu:/home/jyoun/FoodData/output_files.zip .
+unzip output_files.zip
 ```
 
 ### Running
