@@ -77,18 +77,18 @@ def main():
 
     # save results
     log.info('Saving successfully pulled wiki summaries to %s',
-        configparser.getstr('summaries_filepath'))
+             configparser.getstr('summaries_filepath'))
 
     pd_summary.to_csv(configparser.getstr('summaries_filepath'),
-        sep='\t',
-        index=False)
+                      sep='\t',
+                      index=False)
 
     log.info('Saving failed wiki queries to %s',
-        configparser.getstr('failed_filepath'))
+             configparser.getstr('failed_filepath'))
 
     pd_failed.to_csv(configparser.getstr('failed_filepath'),
-        sep='\t',
-        index=False)
+                     sep='\t',
+                     index=False)
 
     # apply same preprocessing done to the FDC data
     fpm = FdcPreprocessManager(

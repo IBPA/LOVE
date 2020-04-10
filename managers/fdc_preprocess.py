@@ -20,7 +20,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 import gensim.utils as gensim_utils
 from gensim.models.phrases import Phrases, Phraser
 import gensim.parsing.preprocessing as gpp
-import numpy as np
 import pandas as pd
 
 # local imports

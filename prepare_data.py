@@ -68,7 +68,7 @@ def main():
 
     # do final processing and save the final file
     log.info('Saving final processed FDC data to \'%s\'...',
-        configparser.getstr('final_fdc_filename'))
+             configparser.getstr('final_fdc_filename'))
     pd_processed.to_csv(configparser.getstr('final_fdc_filename'), sep='\t')
 
     # init FDC preprocess manager
@@ -81,7 +81,7 @@ def main():
 
     # get vocabs and save
     log.info('Saving FDC vocabularies to \'%s\'...',
-        configparser.getstr('vocabs_filename'))
+             configparser.getstr('vocabs_filename'))
 
     vocabs = fpm.get_vocabs(pd_processed['concatenated_preprocessed'])
 
@@ -91,7 +91,7 @@ def main():
 
     # save preprocess final data
     log.info('Saving preprocessed FDC data to \'%s\'...',
-        configparser.getstr('preprocessed_filename'))
+             configparser.getstr('preprocessed_filename'))
     pd_processed.to_csv(configparser.getstr('preprocessed_filename'), sep='\t')
 
 

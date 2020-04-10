@@ -31,6 +31,7 @@ configparser==3.5.0
 gensim==3.8.1
 cython==0.29.14
 pattern==3.6
+wikipedia==1.4.0
 ```
 
 You can optionally use pip3 to install the required Python libraries.
