@@ -23,7 +23,7 @@ import numpy as np
 # local imports
 from utils.config_parser import ConfigParser
 
-
+#https://www.python.org/doc/essays/graphs/
 def find_all_paths(graph, start, end, path=[]):
         path = path + [start]
         if start == end:
@@ -68,21 +68,19 @@ class ParseFoodOn:
         # Read FoodON csv file filtered for data on Child and Parent nodes only 
         # And create DF with pairs of child and parent
         foodonOrigDF=pd.read_csv("/Users/tarininaravane/Documents/FoodOntologyAI/FoodONparsed.txt",delimiter="\t")
-        foodonDF = pd.DataFrame(columns = ["Child","Parent"])
+        foodonOrigDF=pd.read_csv(self.filepath,delimiter="\t")
 
-        """
+        pairs = []
+
         for index,row in foodonOrigDF.iterrows():
             parents = str(row['Parents'])
             parentList = parents.split("|")
-            
             for pClass in parentList:
                 child = str(row['Child'])
-                a_row = pd.Series([child,pClass])
-                row_df = pd.DataFrame([a_row])
-                foodonDF = pd.concat([row_df, foodonDF], ignore_index=True)
-        """
+                pairs.append([child,pClass])
 
-        foodonDF=pd.read_csv("/Users/tarininaravane/Documents/FoodOntologyAI/FoodONchildparentpairs.txt",delimiter="\t")
+        foodonDF = pd.DataFrame(pairs, columns=['Child', 'Parent'])
+        
 
         # Step 1 - Getting list of Parents
         parentList = list(foodonDF['Parent'])
@@ -123,7 +121,7 @@ class ParseFoodOn:
                     child = row['Child']
                     children = children + [child]
                 # Create new tuple with heirachypaths and children
-                # Add tuple as value for key = candidate
+                #  key = candidate , Value = tuple. 
                 value_tuple = (paths,children)
                 candidate_dict[c] = value_tuple
 
