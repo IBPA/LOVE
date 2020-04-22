@@ -38,6 +38,61 @@ def find_all_paths(graph, start, end, path=[]):
                     paths.append(newpath)
         return paths
 
+def get_candidate_classes(foodonDF):
+    # Step 1 - All Parents
+    parentList = list(foodonDF['Parent'])
+    parentNP = np.array(parentList) 
+    parentUnique = np.unique(parentNP)
+    # Step 2 - ONLY children - ie entities
+    childOnly = list(set(foodonDF['Child'])-set(parentUnique))
+    # Step 3 - candidates (ie parents of the entities)
+    candidates = []
+    for c in childOnly:
+        selectPair = foodonDF.loc[foodonDF['Child'] == c].to_numpy() 
+        candidates.append(selectPair[0,1])
+        uniqueCandidates = np.unique(np.array(candidates))
+    return(uniqueCandidates)
+
+def merge_up(foodonDF):
+    parentList = list(foodonDF['Parent'])
+    parentNP = np.array(parentList) 
+    parentUnique = np.unique(parentNP)
+    # Step 2 - ONLY children - ie entities
+    childOnly = list(set(foodonDF['Child'])-set(parentUnique))
+    # Step 3 - candidates (ie parents of the entities)
+    candidates = []
+    for c in childOnly:
+        selectPair = foodonDF.loc[foodonDF['Child'] == c].to_numpy() 
+        candidates.append(selectPair[0,1])
+        uniqueCandidates = np.unique(np.array(candidates))
+
+    min_count = 2
+    consolidatedFoodon = []
+
+    merged=1
+
+    for cd in uniqueCandidates:
+        selectPairs = foodonDF.loc[foodonDF['Parent'] == cd].to_numpy() #look up children
+        cd_children = list(selectPairs[:,0])
+        cd_parents = foodonDF.loc[foodonDF['Child'] == cd].to_numpy() #look up parents
+
+        # merge-up can only be done if candidate's children does NOT have another candidate
+        if len(selectPairs) <= min_count and (set(cd_children).issubset(set(childOnly))) and len(cd_parents)==1: 
+            # delete pair candidate as a parent, 
+            # insert a child-parent pair where - child is children of candidate and parent is the parent of candidate
+            for row_parent in cd_parents: 
+                parent = row_parent[1]
+                for row_child in selectPairs: # for all the child-parent pairs for candidate
+                    child = row_child[0]
+                    consolidatedFoodon.append([child,parent])
+                    merged = merged+1
+        else: #copy all pairs of (child, candidate) as is
+            for row in selectPairs:
+                consolidatedFoodon.append([row[0],row[1]])
+
+    consolidatedfoodonDF = pd.DataFrame(consolidatedFoodon, columns=['Child', 'Parent'])
+    return consolidatedfoodonDF
+
 
 
 class ParseFoodOn:
@@ -61,13 +116,13 @@ class ParseFoodOn:
 
     
 
-    def get_classes(self):
+    def get_classes(self,merge_min_count=2):
         """
         Get all candidate classes.
         """
         # Read FoodON csv file filtered for data on Child and Parent nodes only 
         # And create DF with pairs of child and parent
-        foodonOrigDF=pd.read_csv("/Users/tarininaravane/Documents/FoodOntologyAI/FoodONparsed.txt",delimiter="\t")
+        #foodonOrigDF=pd.read_csv("/Users/tarininaravane/Documents/FoodOntologyAI/FoodONparsed.txt",delimiter="\t")
         foodonOrigDF=pd.read_csv(self.filepath,delimiter="\t")
 
         pairs = []
@@ -80,35 +135,22 @@ class ParseFoodOn:
                 pairs.append([child,pClass])
 
         foodonDF = pd.DataFrame(pairs, columns=['Child', 'Parent'])
-        
+        uniqueCandidates = get_candidate_classes(foodonDF)
 
-        # Step 1 - Getting list of Parents
-        parentList = list(foodonDF['Parent'])
-        parentNP = np.array(parentList) 
-        parentUnique = np.unique(parentNP)
+        #Merging-up 
+        #foodonDF = merge_up(foodonDF)
+        #uniqueCandidates = get_candidate_classes(foodonDF)
 
-        # Step 2 - ONLY children - ie entities
-        childOnly = list(set(foodonDF['Child'])-set(parentUnique))
 
-        # Step 3 - candidates (ie parents of the entities)
-        # List of candidates, look up parent for childOnly from dataframe. 
-        # DF converted to numpy , to remove the column names and index 
-        candidates = []
-        for c in childOnly:
-            selectPair = foodonDF.loc[foodonDF['Child'] == c].to_numpy() 
-            candidates.append(selectPair[0,1])
-        uniqueCandidates = np.unique(np.array(candidates))
 
-        # Step 4 make a dictionary from Orig FoodON DF. key- child , value -list of parents
-        childparentdict={}
+        # Step 4 Convert foodonOrig to a dictionary
+        # key- child , value -list of parents
+        # Step 4 make a graph dictionary - child is key , and list of parents
+        childparentdict = {k: g["Parent"].tolist() for k,g in foodonDF.groupby("Child")}
 
-        for index,row in foodonOrigDF.iterrows():
-            parents = str(row['Parents'])
-            child = row['Child']
-            parentList = parents.split("|")
-            childparentdict[child] = parentList
 
-        # Step 5 Create dictionary of 
+        # Step 5 Create dictionary as return from this function
+        # Key = candidate, value = tuple with all parent paths, and all children
         end = 'http://purl.obolibrary.org/obo/FOODON_00001002' 
         candidate_dict = {}
 
@@ -125,10 +167,12 @@ class ParseFoodOn:
                 value_tuple = (paths,children)
                 candidate_dict[c] = value_tuple
 
-        out = dict(list(candidate_dict.items())[0: 1])  
+        #out = dict(list(candidate_dict.items())[0: 1])  
         
         # printing result   
-        print("Dictionary is :\n " + str(out))  
+        #print("Dictionary is :\n " + str(out)) 
+        print('Key is http://purl.obolibrary.org/obo/CHEBI_22470')
+        print('Value is ',candidate_dict['http://purl.obolibrary.org/obo/CHEBI_22470']) 
 
         return candidate_dict
 
