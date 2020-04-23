@@ -18,10 +18,37 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 # third party imports
 import pandas as pd
 import numpy as np
+import pickle
 
 
 # local imports
 from utils.config_parser import ConfigParser
+
+
+def save_pkl(obj,save_to):
+    """
+    Pickle the object
+    Inputs:
+        obj: Object to pickle
+        save_to : Filepath to pickle the object to
+    """
+    with open(save_to,'wb') as fid:
+        pickle.dump(obj,fid)
+
+def load_pkl(load_from):
+    """
+    Load the pickled object
+    Inputs:
+        load_from : Filepath to pickled object
+    Output:
+        obj: Pickled Object 
+    """ 
+    try:
+        with open(load_from,'rb') as fid:
+            obj = pickle.load(fid)
+            return obj
+    except FileNotFoundError:
+        return(0)
 
 #https://www.python.org/doc/essays/graphs/
 def find_all_paths(graph, start, end, path=[]):
@@ -140,8 +167,8 @@ class ParseFoodOn:
 
         # read configuration file
         self.filepath = self.configparser.getstr('filepath')
+        self.fullontology_pkl = self.configparser.getstr('fullontology_pkl')
 
-        print(self.filepath)
 
     
 
@@ -149,6 +176,11 @@ class ParseFoodOn:
         """
         Get all candidate classes.
         """
+
+        ret_val = load_pkl(self.fullontology_pkl)
+        if ret_val !=0: 
+            return(ret_val)
+
         # Read specified columns from FoodON.csv file         
         foodon=pd.read_csv(self.filepath,usecols =['Class ID','Parents','Preferred Label'])
         # Create dictionary of URI and ClassLabel
@@ -207,9 +239,15 @@ class ParseFoodOn:
                 value_tuple = (paths_as_list_of_tuples,children)
                 candidate_dict[c] = value_tuple
 
+
+        save_pkl(candidate_dict,self.fullontology_pkl)
+
         candidateclass = labels['http://purl.obolibrary.org/obo/CHEBI_22470']
         print('Key is ',candidateclass)
         print('Value is ',candidate_dict[candidateclass])
+
+
+
 
         return candidate_dict
 
@@ -221,6 +259,6 @@ if __name__ == '__main__':
     parse_foodon = ParseFoodOn('../config/foodon_parse.ini')
 
     class_list = parse_foodon.get_classes()
-    get_seeded_skeleton(class_list)
+    #get_seeded_skeleton(class_list)
 
 
