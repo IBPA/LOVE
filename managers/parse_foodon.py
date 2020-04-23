@@ -120,13 +120,17 @@ class ParseFoodOn:
         """
         Get all candidate classes.
         """
-        # Read FoodON csv file filtered for data on Child and Parent nodes only 
-        # And create DF with pairs of child and parent
-        #foodonOrigDF=pd.read_csv("/Users/tarininaravane/Documents/FoodOntologyAI/FoodONparsed.txt",delimiter="\t")
-        foodonOrigDF=pd.read_csv(self.filepath,delimiter="\t")
+        # Read specified columns from FoodON.csv file         
+        foodon=pd.read_csv(self.filepath,usecols =['Class ID','Parents','Preferred Label'])
+        # Create dictionary of URI and ClassLabel
+        labels_tmp = foodon[["Class ID", "Preferred Label"]].copy()
+        labels=labels_tmp.set_index('Class ID')['Preferred Label'].to_dict()
 
+        #Create data frame with columns - child and all its' parents
+        foodonOrigDF = (foodon[["Class ID", "Parents"]].copy()).rename(columns={'Class ID': 'Child'})
+        
+        #Split above DF into pairs of Child-Parent 
         pairs = []
-
         for index,row in foodonOrigDF.iterrows():
             parents = str(row['Parents'])
             parentList = parents.split("|")
@@ -135,28 +139,34 @@ class ParseFoodOn:
                 pairs.append([child,pClass])
 
         foodonDF = pd.DataFrame(pairs, columns=['Child', 'Parent'])
+        # Replace all elements from URI to label
+        for idx,pair in foodonDF.iterrows():
+            pair['Child']=labels[pair['Child']]
+            if pair['Parent'] in labels:
+                pair['Parent']=labels[pair['Parent']]
+
+
+        # Get candidate classes (Will be used to build the Skeleton version of FoodON)
         uniqueCandidates = get_candidate_classes(foodonDF)
+
+        # Create a dictionary version -> child:all parents
+        childparentdict = {k: g["Parent"].tolist() for k,g in foodonDF.groupby("Child")}
 
         #Merging-up 
         #foodonDF = merge_up(foodonDF)
         #uniqueCandidates = get_candidate_classes(foodonDF)
 
-
-
-        # Step 4 Convert foodonOrig to a dictionary
-        # key- child , value -list of parents
-        # Step 4 make a graph dictionary - child is key , and list of parents
-        childparentdict = {k: g["Parent"].tolist() for k,g in foodonDF.groupby("Child")}
-
-
-        # Step 5 Create dictionary as return from this function
-        # Key = candidate, value = tuple with all parent paths, and all children
-        end = 'http://purl.obolibrary.org/obo/FOODON_00001002' 
+        
+        # Creating the Skeleton verion of FoodON
+        end = labels['http://purl.obolibrary.org/obo/FOODON_00001002']  
         candidate_dict = {}
 
         for c in uniqueCandidates:
             paths = find_all_paths(childparentdict,c,end)
+            paths_as_list_of_tuples = []
             if paths != []:
+                for p in paths:
+                    paths_as_list_of_tuples.append(tuple(p)) 
                 children = []
                 childrenrows = foodonDF.loc[foodonDF['Parent'] == c]
                 for index,row in childrenrows.iterrows():
@@ -164,15 +174,12 @@ class ParseFoodOn:
                     children = children + [child]
                 # Create new tuple with heirachypaths and children
                 #  key = candidate , Value = tuple. 
-                value_tuple = (paths,children)
+                value_tuple = (paths_as_list_of_tuples,children)
                 candidate_dict[c] = value_tuple
 
-        #out = dict(list(candidate_dict.items())[0: 1])  
-        
-        # printing result   
-        #print("Dictionary is :\n " + str(out)) 
-        print('Key is http://purl.obolibrary.org/obo/CHEBI_22470')
-        print('Value is ',candidate_dict['http://purl.obolibrary.org/obo/CHEBI_22470']) 
+        candidateclass = labels['http://purl.obolibrary.org/obo/CHEBI_22470']
+        print('Key is ',candidateclass)
+        print('Value is ',candidate_dict[candidateclass])
 
         return candidate_dict
 
