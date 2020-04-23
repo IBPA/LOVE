@@ -12,6 +12,7 @@ To-do:
 import logging as log
 import os
 import sys
+import random
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
@@ -120,34 +121,6 @@ def merge_up(foodonDF):
     consolidatedfoodonDF = pd.DataFrame(consolidatedFoodon, columns=['Child', 'Parent'])
     return consolidatedfoodonDF
 
-import random
-
-def get_seeded_skeleton(candidate_dict,seed_count=2):
-    #key_list = candidate_dict.keys()
-    entities_to_populate = []
-    for cd in candidate_dict.keys():
-        value = candidate_dict[cd]
-        paths = value[0]
-        children = value[1]
-        #entities = list(set(children) - set(key_list))
-        entities = children
-        if len(entities) > 2:
-            seeds = random.choices(entities,k=2)
-            remaining_entities = list(set(entities) - set(seeds))
-            update_value = (paths,seeds)
-            candidate_dict[cd] = update_value
-            entities_to_populate = entities_to_populate + remaining_entities
-        else:
-            seeds=[random.choice(entities)]
-            remaining_entities = list(set(entities) - set(seeds))
-            update_value = (paths,seeds)
-            candidate_dict[cd] = update_value
-            entities_to_populate = entities_to_populate + remaining_entities
-    
-    return_tuple = (candidate_dict,entities_to_populate)
-    return return_tuple
-
-
 
 
 
@@ -168,6 +141,7 @@ class ParseFoodOn:
         # read configuration file
         self.filepath = self.configparser.getstr('filepath')
         self.fullontology_pkl = self.configparser.getstr('fullontology_pkl')
+        self.skeleton_and_entities_pkl = self.configparser.getstr('skeleton_and_entities_pkl')
 
 
     
@@ -242,16 +216,41 @@ class ParseFoodOn:
 
         save_pkl(candidate_dict,self.fullontology_pkl)
 
-        candidateclass = labels['http://purl.obolibrary.org/obo/CHEBI_22470']
-        print('Key is ',candidateclass)
-        print('Value is ',candidate_dict[candidateclass])
-
-
-
-
         return candidate_dict
 
-    
+    def get_seeded_skeleton(self,candidate_dict,seed_count=2):
+        #key_list = candidate_dict.keys()
+        ret_val = load_pkl(self.skeleton_and_entities_pkl)
+        if ret_val !=0: 
+            return(ret_val)
+
+        entities_to_populate = []
+        for cd in candidate_dict.keys():
+            value = candidate_dict[cd]
+            paths = value[0]
+            children = value[1]
+            #entities = list(set(children) - set(key_list))
+            entities = children
+            if len(entities) > 2:
+                random.seed(2)
+                seeds = random.choices(entities,k=2)
+                remaining_entities = list(set(entities) - set(seeds))
+                update_value = (paths,seeds)
+                candidate_dict[cd] = update_value
+                entities_to_populate = entities_to_populate + remaining_entities
+            else:
+                random.seed(2)
+                seeds=[random.choice(entities)]
+                remaining_entities = list(set(entities) - set(seeds))
+                update_value = (paths,seeds)
+                candidate_dict[cd] = update_value
+                entities_to_populate = entities_to_populate + remaining_entities
+        
+        return_tuple = (candidate_dict,entities_to_populate)
+        save_pkl(return_tuple,self.skeleton_and_entities_pkl)
+        return return_tuple
+
+  
 
 
 
@@ -259,6 +258,6 @@ if __name__ == '__main__':
     parse_foodon = ParseFoodOn('../config/foodon_parse.ini')
 
     class_list = parse_foodon.get_classes()
-    #get_seeded_skeleton(class_list)
+    seeded_skeleton = parse_foodon.get_seeded_skeleton(class_list)
 
 
