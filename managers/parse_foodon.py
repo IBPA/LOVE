@@ -93,6 +93,35 @@ def merge_up(foodonDF):
     consolidatedfoodonDF = pd.DataFrame(consolidatedFoodon, columns=['Child', 'Parent'])
     return consolidatedfoodonDF
 
+import random
+
+def get_seeded_skeleton(candidate_dict,seed_count=2):
+    #key_list = candidate_dict.keys()
+    entities_to_populate = []
+    for cd in candidate_dict.keys():
+        value = candidate_dict[cd]
+        paths = value[0]
+        children = value[1]
+        #entities = list(set(children) - set(key_list))
+        entities = children
+        if len(entities) > 2:
+            seeds = random.choices(entities,k=2)
+            remaining_entities = list(set(entities) - set(seeds))
+            update_value = (paths,seeds)
+            candidate_dict[cd] = update_value
+            entities_to_populate = entities_to_populate + remaining_entities
+        else:
+            seeds=[random.choice(entities)]
+            remaining_entities = list(set(entities) - set(seeds))
+            update_value = (paths,seeds)
+            candidate_dict[cd] = update_value
+            entities_to_populate = entities_to_populate + remaining_entities
+    
+    return_tuple = (candidate_dict,entities_to_populate)
+    return return_tuple
+
+
+
 
 
 class ParseFoodOn:
@@ -139,7 +168,8 @@ class ParseFoodOn:
                 pairs.append([child,pClass])
 
         foodonDF = pd.DataFrame(pairs, columns=['Child', 'Parent'])
-        # Replace all elements from URI to label
+
+        # For foodonDF, replace URI by label
         for idx,pair in foodonDF.iterrows():
             pair['Child']=labels[pair['Child']]
             if pair['Parent'] in labels:
@@ -191,3 +221,6 @@ if __name__ == '__main__':
     parse_foodon = ParseFoodOn('../config/foodon_parse.ini')
 
     class_list = parse_foodon.get_classes()
+    get_seeded_skeleton(class_list)
+
+
