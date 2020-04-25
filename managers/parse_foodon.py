@@ -243,17 +243,14 @@ class ParseFoodOn:
             if len(entities) > seed_count:
                 random.seed(2)
                 seeds = random.choices(entities,k=seed_count)
-                remaining_entities = list(set(entities) - set(seeds))
-                update_value = (paths,seeds)
-                candidate_dict[cd] = update_value
-                entities_to_populate = entities_to_populate + remaining_entities
             else:
                 random.seed(2)
                 seeds=[random.choice(entities)]
-                remaining_entities = list(set(entities) - set(seeds))
-                update_value = (paths,seeds)
-                candidate_dict[cd] = update_value
-                entities_to_populate = entities_to_populate + remaining_entities
+            remaining_entities = list(set(entities) - set(seeds))
+            remaining_entities = list(set(remaining_entities) - set(candidate_dict.keys()))
+            update_value = (paths,seeds)
+            candidate_dict[cd] = update_value
+            entities_to_populate = entities_to_populate + remaining_entities
         
         return_tuple = (candidate_dict,entities_to_populate)
         save_pkl(return_tuple,self.skeleton_and_entities_pkl)
