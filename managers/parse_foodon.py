@@ -51,7 +51,7 @@ def load_pkl(load_from):
     except FileNotFoundError:
         return(0)
 
-#https://www.python.org/doc/essays/graphs/
+#Reference : https://www.python.org/doc/essays/graphs/
 def find_all_paths(graph, start, end, path=[]):
         path = path + [start]
         if start == end:
@@ -142,6 +142,7 @@ class ParseFoodOn:
         self.filepath = self.configparser.getstr('filepath')
         self.fullontology_pkl = self.configparser.getstr('fullontology_pkl')
         self.skeleton_and_entities_pkl = self.configparser.getstr('skeleton_and_entities_pkl')
+        self.overwrite_pkl = int(self.configparser.getstr('overwrite_pickle_flag'))
 
 
     
@@ -149,16 +150,24 @@ class ParseFoodOn:
     def get_classes(self,merge_min_count=2):
         """
         Get all candidate classes.
-        """
+        """                
 
+        # Check for previously saved pickle file
         ret_val = load_pkl(self.fullontology_pkl)
-        if ret_val !=0: 
-            return(ret_val)
-
+        if ret_val !=0: # Pickle file exists
+            if self.overwrite_pkl !=1: # Do not create a new pickle file
+                return(ret_val)
+        
         # Read specified columns from FoodON.csv file         
         foodon=pd.read_csv(self.filepath,usecols =['Class ID','Parents','Preferred Label'])
         # Create dictionary of URI and ClassLabel
         labels_tmp = foodon[["Class ID", "Preferred Label"]].copy()
+        for idx,label in labels_tmp.iterrows():
+            label_str=label['Preferred Label']
+            label_str = label_str.replace('food', '')
+            label_str = label_str.replace('product', '')
+            label['Preferred Label'] = label_str
+
         labels=labels_tmp.set_index('Class ID')['Preferred Label'].to_dict()
 
         #Create data frame with columns - child and all its' parents
@@ -231,9 +240,9 @@ class ParseFoodOn:
             children = value[1]
             #entities = list(set(children) - set(key_list))
             entities = children
-            if len(entities) > 2:
+            if len(entities) > seed_count:
                 random.seed(2)
-                seeds = random.choices(entities,k=2)
+                seeds = random.choices(entities,k=seed_count)
                 remaining_entities = list(set(entities) - set(seeds))
                 update_value = (paths,seeds)
                 candidate_dict[cd] = update_value
