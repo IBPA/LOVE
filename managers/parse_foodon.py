@@ -66,6 +66,13 @@ def find_all_paths(graph, start, end, path=[]):
                     paths.append(newpath)
         return paths
 
+def get_parent_classes(foodonDF):
+    parentList = list(foodonDF['Parent'])
+    parentNP = np.array(parentList) 
+    parentUnique = np.unique(parentNP)
+    return(parentUnique)
+
+
 def get_candidate_classes(foodonDF):
     # Step 1 - All Parents
     parentList = list(foodonDF['Parent'])
@@ -121,7 +128,22 @@ def merge_up(foodonDF):
     consolidatedfoodonDF = pd.DataFrame(consolidatedFoodon, columns=['Child', 'Parent'])
     return consolidatedfoodonDF
 
-
+def edit_label(labels_tmp):
+    for idx,row in labels_tmp.iterrows():
+        label=row['Preferred Label']
+        if not('foodon' in label):
+            label_replaced = label.replace(' food ', '')
+            label_replaced = label_replaced.replace('food ', ' ')
+            label_replaced = label_replaced.replace(' food ', ' ') 
+            label_replaced = label_replaced.replace(' products ', ' ')
+            label_replaced = label_replaced.replace('products ', ' ')
+            label_replaced = label_replaced.replace(' products', ' ')   
+            label_replaced = label_replaced.replace(' product ', ' ')
+            label_replaced = label_replaced.replace('product ', ' ')
+            label_replaced = label_replaced.replace(' product', ' ')
+            
+            row['Preferred Label'] = label_replaced 
+    return(labels_tmp)
 
 
 class ParseFoodOn:
@@ -143,31 +165,27 @@ class ParseFoodOn:
         self.fullontology_pkl = self.configparser.getstr('fullontology_pkl')
         self.skeleton_and_entities_pkl = self.configparser.getstr('skeleton_and_entities_pkl')
         self.overwrite_pkl = int(self.configparser.getstr('overwrite_pickle_flag'))
+        self.foodonDF=pd.DataFrame()
 
 
-    
+    def get_parent_classes(self):
+        parentList = list(self.foodonDF['Parent'])
+        parentNP = np.array(parentList) 
+        parentUnique = np.unique(parentNP)
+        return(list(parentUnique))
+
 
     def get_classes(self,merge_min_count=2):
         """
         Get all candidate classes.
         """                
-
-        # Check for previously saved pickle file
-        ret_val = load_pkl(self.fullontology_pkl)
-        if ret_val !=0: # Pickle file exists
-            if self.overwrite_pkl !=1: # Do not create a new pickle file
-                return(ret_val)
-        
         # Read specified columns from FoodON.csv file         
         foodon=pd.read_csv(self.filepath,usecols =['Class ID','Parents','Preferred Label'])
-        # Create dictionary of URI and ClassLabel
+        
+        # Edit labels to remove occurences of 'food','product' and 'products'
+        #Create dictionary of URI and ClassLabel
         labels_tmp = foodon[["Class ID", "Preferred Label"]].copy()
-        for idx,label in labels_tmp.iterrows():
-            label_str=label['Preferred Label']
-            label_str = label_str.replace('food', '')
-            label_str = label_str.replace('product', '')
-            label['Preferred Label'] = label_str
-
+        #labels_tmp=edit_label(labels_tmp)
         labels=labels_tmp.set_index('Class ID')['Preferred Label'].to_dict()
 
         #Create data frame with columns - child and all its' parents
@@ -181,21 +199,32 @@ class ParseFoodOn:
             for pClass in parentList:
                 child = str(row['Child'])
                 pairs.append([child,pClass])
+        self.foodonDF = pd.DataFrame(pairs, columns=['Child', 'Parent'])
 
-        foodonDF = pd.DataFrame(pairs, columns=['Child', 'Parent'])
-
-        # For foodonDF, replace URI by label
-        for idx,pair in foodonDF.iterrows():
+        # In foodonDF, replace URI by label
+        for idx,pair in self.foodonDF.iterrows():
             pair['Child']=labels[pair['Child']]
             if pair['Parent'] in labels:
                 pair['Parent']=labels[pair['Parent']]
 
+        print('Parsed FoodON Ontology file.\n')
+
+        
+        # Check for previously saved pickle file
+        ret_val = load_pkl(self.fullontology_pkl)
+        if ret_val !=0: # Pickle file exists
+            if self.overwrite_pkl !=1: # Do not create a new pickle file
+                print('Return classes from previously saved pickle file.')
+                return(ret_val)
+                        
+
+        print('Creating FoodON ground truth Ontology Structure\n')
 
         # Get candidate classes (Will be used to build the Skeleton version of FoodON)
-        uniqueCandidates = get_candidate_classes(foodonDF)
+        uniqueCandidates = get_candidate_classes(self.foodonDF)
 
         # Create a dictionary version -> child:all parents
-        childparentdict = {k: g["Parent"].tolist() for k,g in foodonDF.groupby("Child")}
+        childparentdict = {k: g["Parent"].tolist() for k,g in self.foodonDF.groupby("Child")}
 
         #Merging-up 
         #foodonDF = merge_up(foodonDF)
@@ -213,13 +242,15 @@ class ParseFoodOn:
                 for p in paths:
                     paths_as_list_of_tuples.append(tuple(p)) 
                 children = []
-                childrenrows = foodonDF.loc[foodonDF['Parent'] == c]
+                childrenrows = self.foodonDF.loc[self.foodonDF['Parent'] == c]
                 for index,row in childrenrows.iterrows():
                     child = row['Child']
                     children = children + [child]
+                    uniquechildren = list(np.unique(np.array(children)))
+
                 # Create new tuple with heirachypaths and children
                 #  key = candidate , Value = tuple. 
-                value_tuple = (paths_as_list_of_tuples,children)
+                value_tuple = (paths_as_list_of_tuples,uniquechildren)
                 candidate_dict[c] = value_tuple
 
 
@@ -228,12 +259,14 @@ class ParseFoodOn:
         return candidate_dict
 
     def get_seeded_skeleton(self,candidate_dict,seed_count=2):
-        #key_list = candidate_dict.keys()
+        """
         ret_val = load_pkl(self.skeleton_and_entities_pkl)
         if ret_val !=0: 
             return(ret_val)
-
+        """
         entities_to_populate = []
+        all_parents = self.get_parent_classes()
+
         for cd in candidate_dict.keys():
             value = candidate_dict[cd]
             paths = value[0]
@@ -247,7 +280,7 @@ class ParseFoodOn:
                 random.seed(2)
                 seeds=[random.choice(entities)]
             remaining_entities = list(set(entities) - set(seeds))
-            remaining_entities = list(set(remaining_entities) - set(candidate_dict.keys()))
+            remaining_entities = list(set(remaining_entities) - set(all_parents))
             update_value = (paths,seeds)
             candidate_dict[cd] = update_value
             entities_to_populate = entities_to_populate + remaining_entities
@@ -256,14 +289,10 @@ class ParseFoodOn:
         save_pkl(return_tuple,self.skeleton_and_entities_pkl)
         return return_tuple
 
-  
-
-
 
 if __name__ == '__main__':
     parse_foodon = ParseFoodOn('../config/foodon_parse.ini')
 
     class_list = parse_foodon.get_classes()
     seeded_skeleton = parse_foodon.get_seeded_skeleton(class_list)
-
-
+    print('End of code')
