@@ -179,6 +179,13 @@ class ParseFoodOn:
         """
         Get all candidate classes.
         """                
+
+        # Check for previously saved pickle file
+        ret_val = load_pkl(self.fullontology_pkl)
+        if ret_val !=0: # Pickle file exists
+            if self.overwrite_pkl !=1: # Do not create a new pickle file
+                return(ret_val)
+        
         # Read specified columns from FoodON.csv file         
         foodon=pd.read_csv(self.filepath,usecols =['Class ID','Parents','Preferred Label'])
         
@@ -259,11 +266,10 @@ class ParseFoodOn:
         return candidate_dict
 
     def get_seeded_skeleton(self,candidate_dict,seed_count=2):
-        """
         ret_val = load_pkl(self.skeleton_and_entities_pkl)
         if ret_val !=0: 
             return(ret_val)
-        """
+
         entities_to_populate = []
         all_parents = self.get_parent_classes()
 
@@ -274,10 +280,8 @@ class ParseFoodOn:
             #entities = list(set(children) - set(key_list))
             entities = children
             if len(entities) > seed_count:
-                random.seed(2)
                 seeds = random.choices(entities,k=seed_count)
             else:
-                random.seed(2)
                 seeds=[random.choice(entities)]
             remaining_entities = list(set(entities) - set(seeds))
             remaining_entities = list(set(remaining_entities) - set(all_parents))

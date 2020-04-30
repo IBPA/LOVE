@@ -83,5 +83,6 @@ def main():
     w2vm.save_vectors(configparser.getstr('vectors_saveto'))
     w2vm.save_loss(configparser.getstr('loss_saveto'))
 
+
 if __name__ == '__main__':
     main()

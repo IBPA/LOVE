@@ -9,6 +9,8 @@ To-do:
 """
 # standard imports
 import configparser
+import logging as log
+
 
 class ConfigParser:
     """
@@ -19,11 +21,35 @@ class ConfigParser:
         Class initializer for ConfigParser.
 
         Inputs:
-            filepath: (str) File path of .ini config file.
+            filepath: (str) Filepath of the .ini config file.
         """
         self.config = configparser.ConfigParser()
         self.config.optionxform = str
         self.config.read(filepath)
+
+    @staticmethod
+    def _print_no_key_warning(key):
+        """
+        (Private) Log warning if the query key does not exist.
+
+        Inputs:
+            key: (str) Failed key that does not exist.
+        """
+        log.warning('Failed to read key \'%s\'. Returning None instead.', key)
+
+    def append(self, section, entry):
+        """
+        Append to the configuration.
+
+        Inputs:
+            section: section name to append
+            entry: items to append to specified section
+                in dictionary format
+        """
+        self.config[section] = entry
+
+    def overwrite(self, key, value, section='DEFAULT'):
+        self.config[section][key] = value
 
     def write(self, filepath):
         """
@@ -32,7 +58,8 @@ class ConfigParser:
         Inputs:
             filepath: (str) File path to save the config file.
         """
-        self.config.write(filepath)
+        with open(filepath, 'w') as configfile:
+            self.config.write(configfile)
 
     def sections(self):
         """
@@ -48,7 +75,7 @@ class ConfigParser:
         Return the options (keys) under the specified section.
 
         Inputs:
-            section: (str) Section to read the options from.
+            section: (str, optional) Section to read the options from.
 
         Returns:
             (list) List of options, where each option is in string.
@@ -61,12 +88,16 @@ class ConfigParser:
 
         Inputs:
             key: (str) Key to fetch.
-            section: (str) Section to fetch from.
+            section: (str, optional) Section to fetch from.
 
         Returns:
             (str) Configuration in string format.
         """
-        return self.config[section][key]
+        try:
+            return self.config[section][key]
+        except KeyError:
+            ConfigParser._print_no_key_warning(key)
+            return None
 
     def getint(self, key, section='DEFAULT'):
         """
@@ -74,12 +105,17 @@ class ConfigParser:
 
         Inputs:
             key: (str) Key to fetch.
-            section: (str) Section to fetch from.
+            section: (str, optional) Section to fetch from.
 
         Returns:
             (int) Configuration in integer format.
+            If key does not exist, return None.
         """
-        return self.config.getint(section, key)
+        try:
+            return self.config.getint(section, key)
+        except (KeyError, configparser.NoOptionError):
+            ConfigParser._print_no_key_warning(key)
+            return None
 
     def getbool(self, key, section='DEFAULT'):
         """
@@ -87,12 +123,17 @@ class ConfigParser:
 
         Inputs:
             key: (str) Key to fetch.
-            section: (str) Section to fetch from.
+            section: (str, optional) Section to fetch from.
 
         Returns:
             (bool) Configuration in boolean format.
+            If key does not exist, return None.
         """
-        return self.config.getboolean(section, key)
+        try:
+            return self.config.getboolean(section, key)
+        except KeyError:
+            ConfigParser._print_no_key_warning(key)
+            return None
 
     def getfloat(self, key, section='DEFAULT'):
         """
@@ -100,12 +141,36 @@ class ConfigParser:
 
         Inputs:
             key: (str) Key to fetch.
-            section: (str) Section to fetch from.
+            section: (str, optional) Section to fetch from.
 
         Returns:
             (float) Configuration in float format.
+            If key does not exist, return None.
         """
-        return self.config.getfloat(section, key)
+        try:
+            return self.config.getfloat(section, key)
+        except KeyError:
+            ConfigParser._print_no_key_warning(key)
+            return None
+
+    def get_str_list(self, key, delim=', ', section='DEFAULT'):
+        """
+        Get key from configuration in list of strings.
+
+        Inputs:
+            key: (str) Key to fetch.
+            delim: (str, optional) Delimiter to use for splitting.
+            section: (str, optional) Section to fetch from.
+
+        Returns:
+            (list) Configuration in list of strings.
+            If key does not exist, return None.
+        """
+        try:
+            return self.config[section][key].split(delim)
+        except KeyError:
+            ConfigParser._print_no_key_warning(key)
+            return None
 
     def get_section_as_dict(self, section='DEFAULT', value_delim=','):
         """
@@ -113,8 +178,8 @@ class ConfigParser:
         and values as a dictionary.
 
         Inputs:
-            section: (str) Section to fetch from.
-            value_delim: (str) Delimiter for splitting the values.
+            section: (str, optional) Section to fetch from.
+            value_delim: (str, optional) Delimiter for splitting the values.
                 If None specified, value will not be processed and
                 returned as string.
 
@@ -130,7 +195,7 @@ class ConfigParser:
         dictionary = {}
 
         for key in self.options(section):
-            value = self.getstr(key, section=section)
+            value = self.get_str(key, section=section)
 
             if value_delim:
                 value = value.split(value_delim)
