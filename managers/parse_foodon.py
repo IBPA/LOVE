@@ -132,7 +132,8 @@ def edit_label(labels_tmp):
     for idx,row in labels_tmp.iterrows():
         label=row['Preferred Label']
         if not('foodon' in label):
-            label_replaced = label.replace(' food ', '')
+            label_replaced = label.replace('food product', '')
+            label_replaced = label_replaced.replace(' food ', '')
             label_replaced = label_replaced.replace('food ', ' ')
             label_replaced = label_replaced.replace(' food ', ' ') 
             label_replaced = label_replaced.replace(' products ', ' ')
@@ -192,7 +193,7 @@ class ParseFoodOn:
         # Edit labels to remove occurences of 'food','product' and 'products'
         #Create dictionary of URI and ClassLabel
         labels_tmp = foodon[["Class ID", "Preferred Label"]].copy()
-        #labels_tmp=edit_label(labels_tmp)
+        labels_tmp=edit_label(labels_tmp)
         labels=labels_tmp.set_index('Class ID')['Preferred Label'].to_dict()
 
         #Create data frame with columns - child and all its' parents

@@ -51,28 +51,42 @@ You also need to download some data files and place them in appropriate places.
 
 1. FDC data.
 ```
-cd ./data/FDC
+cd root/data/FDC
 ./download_fdc.sh
 ```
 
 2. GloVe 6B pre-trained weights. This downloads the word embeddings in GloVe format and converts them to Word2Vec compatible format.
 ```
-cd ./data/pretrain
+cd root/data/pretrain
 ./download_convert_glove.sh
 ```
 
 3. (Optional) Word2Vec models and the actual word embeddings. Use the following password when prompted: sc!@#$
 ```
-cd ./data/model
+cd root/data/model
 scp jyoun@tagkopouloslab.ucdavis.edu:/home/jyoun/FoodData/model.zip .
 unzip model.zip
 ```
 
-4. (Optional) Output files. se the following password when prompted: sc!@#$
+4. (Optional) Pre-calculated initial siblings / parents scores. Use the following password when prompted: sc!@#$
 ```
-cd ./output
-scp jyoun@tagkopouloslab.ucdavis.edu:/home/jyoun/FoodData/output_files.zip .
-unzip output_files.zip
+cd root/data/scores
+scp jyoun@tagkopouloslab.ucdavis.edu:/home/jyoun/FoodData/scores.zip .
+unzip scores.zip
+```
+
+5. (Optional) Parsed ontology data used to calculate scores above. Use the following password when prompted: sc!@#$
+```
+cd root/data/FoodOn
+scp jyoun@tagkopouloslab.ucdavis.edu:/home/jyoun/FoodData/parse_results.zip .
+unzip parse_results.zip
+```
+
+6. (Optional) Output files. Use the following password when prompted: sc!@#$
+```
+cd root/output
+scp jyoun@tagkopouloslab.ucdavis.edu:/home/jyoun/FoodData/output.zip .
+unzip output.zip
 ```
 
 ### Running

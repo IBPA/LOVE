@@ -22,11 +22,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 # third party libraries
 import numpy as np
 import pandas as pd
+from gensim.models import KeyedVectors
 
 # local imports
 from fdc_preprocess import FdcPreprocessManager
 from utils.config_parser import ConfigParser
-from utils.utilities import file_exists
+from utils.utilities import file_exists, save_pkl
 
 
 class ScoringManager:
@@ -35,7 +36,6 @@ class ScoringManager:
     """
     def __init__(
             self,
-            keyed_vectors,
             candidate_classes_info,
             candidate_entities,
             preprocess_config,
@@ -43,13 +43,20 @@ class ScoringManager:
         """
         Class initializer.
         """
-        self.keyed_vectors = keyed_vectors
+        # config parser
+        scoring_config = ConfigParser(scoring_config)
+
+        # save arguments
+        # self.keyed_vectors = KeyedVectors.load_word2vec_format(scoring_config.getstr('word_embeddings'))
+        # self.keyed_vectors.init_sims(replace=True)
+        # self.keyed_vectors.save('./output/temp_embeddings.txt')
+        # sys.exit()
+        self.keyed_vectors = KeyedVectors.load('./output/temp_embeddings.txt', mmap='r')
         self.candidate_classes_info = candidate_classes_info
         self.candidate_entities = candidate_entities
         self.fpm = FdcPreprocessManager(preprocess_config)
 
         # parse config file
-        scoring_config = ConfigParser(scoring_config)
         self.alpha = scoring_config.getfloat('alpha')
         self.num_mapping_per_iteration = scoring_config.getint('num_mapping_per_iteration')
         self.initial_siblings_scores = scoring_config.getstr('initial_siblings_scores')
@@ -149,8 +156,6 @@ class ScoringManager:
         class_label, entity_label = pair[0], pair[1]
         entity_embeddings = self.pd_entity_label_embeddings.loc[entity_label, 'vector']
 
-        # print(class_label, entity_label)
-
         paths_list = self.candidate_classes_info[class_label][0]
         num_paths = len(paths_list)
 
@@ -225,13 +230,17 @@ class ScoringManager:
 
     def run_iteration(self):
         num_iterations = math.floor(self.num_candidate_entities / self.num_mapping_per_iteration)
+        iteration_dict = {}
 
         iteration = 0
         while len(self.candidate_entities) > 0:
             log.info('Updating scores. Iteration: %d/%d', iteration, num_iterations)
+            t1 = time()
 
+            # calculate score
             pd_scores = self.alpha*self.pd_siblings_scores + (1-self.alpha)*self.pd_parents_scores
 
+            # find top N unique entities with highest score
             num_scores = pd_scores.shape[0] * pd_scores.shape[1]
             pd_top_scores = pd_scores.stack().nlargest(num_scores).reset_index()
             pd_top_scores.columns = ['candidate class', 'candidate entity', 'score']
@@ -260,11 +269,9 @@ class ScoringManager:
                 classes_to_update,
                 self.candidate_entities))
 
-            t1 = time()
-            with multiprocessing.Pool(processes=9, maxtasksperchild=1) as p:
-                results = p.map(self._calculate_siblings_score, entity_class_pairs)
-            t2 = time()
-
+            results = []
+            for pair in entity_class_pairs:
+                results.append(self._calculate_siblings_score(pair))
             results = np.array(results).reshape(len(classes_to_update), len(self.candidate_entities))
 
             pd_siblings_to_update = pd.DataFrame(
@@ -274,8 +281,13 @@ class ScoringManager:
 
             self.pd_siblings_scores.update(pd_siblings_to_update)
 
+            t2 = time()
             log.info('Elapsed time for updating scores: %.2f minutes', (t2-t1)/60)
+
+            iteration_dict[iteration] = self.candidate_classes_info.copy()
 
             iteration += 1
 
-        return self.candidate_classes_info
+        save_pkl(iteration_dict, './output/populated.pkl')
+
+        return iteration_dict

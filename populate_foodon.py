@@ -10,13 +10,7 @@ To-do:
 """
 # standard imports
 import argparse
-import logging as log
-import os
 import sys
-
-# third party imports
-import pandas as pd
-from gensim.models import KeyedVectors
 
 # local imports
 from managers.parse_foodon import ParseFoodOn
@@ -55,27 +49,19 @@ def main():
     configparser = ConfigParser(args.config_file)
 
     parse_foodon = ParseFoodOn(configparser.getstr('foodon_parse_config'))
-    all_classes = parse_foodon.get_classes()
-    candidate_classes, candidate_entities = parse_foodon.get_seeded_skeleton(all_classes)
-
-    keyed_vectors = KeyedVectors.load_word2vec_format('./data/model/fdc_wiki_embeddings.txt')
-    # keyed_vectors.init_sims(replace=True)
-    # keyed_vectors.save('./output/temp_embeddings.txt')
-    # sys.exit()
-
-    # keyed_vectors = KeyedVectors.load('./output/temp_embeddings.txt', mmap='r')
+    classes_info = parse_foodon.get_classes()
+    classes_info_skeleton, candidate_entities = parse_foodon.get_seeded_skeleton(classes_info)
 
     candidate_entities = list(set(candidate_entities))
     candidate_entities.sort()
 
     scoring_manager = ScoringManager(
-        keyed_vectors,
-        candidate_classes,
+        classes_info_skeleton,
         candidate_entities,
         configparser.getstr('preprocess_config'),
         configparser.getstr('scoring_config'))
 
-    scoring_manager.run_iteration()
+    iteration_dict = scoring_manager.run_iteration()
 
 
 if __name__ == '__main__':

@@ -195,7 +195,7 @@ class ConfigParser:
         dictionary = {}
 
         for key in self.options(section):
-            value = self.get_str(key, section=section)
+            value = self.getstr(key, section=section)
 
             if value_delim:
                 value = value.split(value_delim)

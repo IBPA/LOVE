@@ -1,0 +1,9 @@
+# ignore everything in this directory
+*
+
+# except for these files
+!.gitignore
+FOODON.csv
+
+# even if they're in subdirectories
+!*/
