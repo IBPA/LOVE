@@ -44,10 +44,12 @@ class ScoringManager:
         Class initializer.
         """
         # config parser
-        scoring_config = ConfigParser(scoring_config)
+        if isinstance(scoring_config, str):
+            scoring_config = ConfigParser(scoring_config)
 
         # save arguments
-        # self.keyed_vectors = KeyedVectors.load_word2vec_format(scoring_config.getstr('word_embeddings'))
+        # self.keyed_vectors = KeyedVectors.load_word2vec_format(
+        #     scoring_config.getstr('word_embeddings'))
         # self.keyed_vectors.init_sims(replace=True)
         # self.keyed_vectors.save('./output/temp_embeddings.txt')
         # sys.exit()
@@ -58,16 +60,27 @@ class ScoringManager:
 
         # parse config file
         self.alpha = scoring_config.getfloat('alpha')
+        self.beta = scoring_config.getfloat('beta')
         self.num_mapping_per_iteration = scoring_config.getint('num_mapping_per_iteration')
         self.initial_siblings_scores = scoring_config.getstr('initial_siblings_scores')
         self.initial_parents_scores = scoring_config.getstr('initial_parents_scores')
+        self.pairs_filepath = scoring_config.getstr('pairs_filepath')
+        self.populated_filepath = scoring_config.getstr('populated_filepath')
+
+        log.debug('alpha: %f', self.alpha)
+        log.debug('beta: %f', self.beta)
+        log.debug('num_mapping_per_iteration: %d', self.num_mapping_per_iteration)
+        log.debug('initial_siblings_scores: %s', self.initial_siblings_scores)
+        log.debug('initial_parents_scores: %s', self.initial_parents_scores)
+        log.debug('pairs_filepath: %s', self.pairs_filepath)
+        log.debug('populated_filepath: %s', self.populated_filepath)
 
         # number of candidate classes & entities
         self.num_candidate_classes = len(self.candidate_classes_info)
         self.num_candidate_entities = len(self.candidate_entities)
 
-        log.info('Number of candidate classes: %d', self.num_candidate_classes)
-        log.info('Number of candidate entities: %d', self.num_candidate_entities)
+        log.debug('Number of candidate classes: %d', self.num_candidate_classes)
+        log.debug('Number of candidate entities: %d', self.num_candidate_entities)
 
         # extract the seeded entities to make complete list of entities
         seed_entities = self._unpack_sublist([x[1] for _, x in self.candidate_classes_info.items()])
@@ -170,8 +183,13 @@ class ScoringManager:
                 parent_embeddings = self.pd_class_label_embeddings.loc[path[j], 'vector']
                 similarity = self._calculate_cosine_similarity(parent_embeddings, entity_embeddings)
 
-                numerator += similarity * math.exp((j+1)/(path_depth))
-                denominator += math.exp((j+1)/(path_depth))
+                if path_depth == 1:
+                    weight = 1.0
+                else:
+                    weight = math.exp(j*self.beta / (path_depth-1))
+
+                numerator += similarity * weight
+                denominator += weight
 
             score += (numerator / denominator)
 
@@ -181,9 +199,12 @@ class ScoringManager:
 
     def _calculate_initial_scores(self):
         if file_exists(self.initial_siblings_scores) and file_exists(self.initial_parents_scores):
+            log.info('Pre-calculated scores found.')
             pd_siblings_scores = pd.read_csv(self.initial_siblings_scores, index_col=0)
             pd_parents_scores = pd.read_csv(self.initial_parents_scores, index_col=0)
         else:
+            log.info('No pre-calculated scores found.')
+
             entity_class_pairs = list(itertools.product(
                 self.candidate_classes_label,
                 self.candidate_entities))
@@ -198,7 +219,8 @@ class ScoringManager:
 
             log.info('Elapsed time for calculating siblings score: %.2f minutes', (t2-t1)/60)
 
-            results = np.array(results).reshape(self.num_candidate_classes, self.num_candidate_entities)
+            results = np.array(results).reshape(
+                self.num_candidate_classes, self.num_candidate_entities)
 
             pd_siblings_scores = pd.DataFrame(
                 results,
@@ -210,6 +232,9 @@ class ScoringManager:
             # calculate parents score
             log.info('Calculating parents score...')
 
+            for i in entity_class_pairs:
+                self._calculate_parents_score(i)
+
             t1 = time()
             with multiprocessing.Pool(processes=9, maxtasksperchild=1) as p:
                 results = p.map(self._calculate_parents_score, entity_class_pairs)
@@ -217,7 +242,8 @@ class ScoringManager:
 
             log.info('Elapsed time for calculating parents score: %.2f minutes', (t2-t1)/60)
 
-            results = np.array(results).reshape(self.num_candidate_classes, self.num_candidate_entities)
+            results = np.array(results).reshape(
+                self.num_candidate_classes, self.num_candidate_entities)
 
             pd_parents_scores = pd.DataFrame(
                 results,
@@ -230,7 +256,8 @@ class ScoringManager:
 
     def run_iteration(self):
         num_iterations = math.floor(self.num_candidate_entities / self.num_mapping_per_iteration)
-        iteration_dict = {}
+        iteration_pairs = {}
+        iteration_populated_dict = {}
 
         iteration = 0
         while len(self.candidate_entities) > 0:
@@ -246,7 +273,10 @@ class ScoringManager:
             pd_top_scores.columns = ['candidate class', 'candidate entity', 'score']
             pd_top_scores.drop_duplicates(subset='candidate entity', inplace=True)
 
-            top_n_scores = list(zip(pd_top_scores['candidate class'], pd_top_scores['candidate entity']))
+            log.debug('Top scores: \n%s', str(pd_top_scores.head()))
+
+            top_n_scores = list(zip(
+                pd_top_scores['candidate class'], pd_top_scores['candidate entity']))
             top_n_scores = top_n_scores[0:self.num_mapping_per_iteration]
 
             classes_to_update = list(set([x[0] for x in top_n_scores]))
@@ -261,8 +291,10 @@ class ScoringManager:
 
             # remove selected entities from candidate entities and scores
             self.candidate_entities = list(set(self.candidate_entities) - set(entities_to_remove))
-            self.pd_siblings_scores = self.pd_siblings_scores.drop(labels=entities_to_remove, axis=1)
-            self.pd_parents_scores = self.pd_parents_scores.drop(labels=entities_to_remove, axis=1)
+            self.pd_siblings_scores = self.pd_siblings_scores.drop(
+                labels=entities_to_remove, axis=1)
+            self.pd_parents_scores = self.pd_parents_scores.drop(
+                labels=entities_to_remove, axis=1)
 
             # update siblings score
             entity_class_pairs = list(itertools.product(
@@ -272,7 +304,9 @@ class ScoringManager:
             results = []
             for pair in entity_class_pairs:
                 results.append(self._calculate_siblings_score(pair))
-            results = np.array(results).reshape(len(classes_to_update), len(self.candidate_entities))
+
+            results = np.array(results).reshape(
+                len(classes_to_update), len(self.candidate_entities))
 
             pd_siblings_to_update = pd.DataFrame(
                 results,
@@ -284,10 +318,13 @@ class ScoringManager:
             t2 = time()
             log.info('Elapsed time for updating scores: %.2f minutes', (t2-t1)/60)
 
-            iteration_dict[iteration] = self.candidate_classes_info.copy()
+            # save progress
+            iteration_pairs[iteration] = top_n_scores.copy()
+            iteration_populated_dict[iteration] = self.candidate_classes_info.copy()
 
             iteration += 1
 
-        save_pkl(iteration_dict, './output/populated.pkl')
+        save_pkl(iteration_pairs, self.pairs_filepath)
+        save_pkl(iteration_populated_dict, self.populated_filepath)
 
-        return iteration_dict
+        return iteration_pairs, iteration_populated_dict
