@@ -106,9 +106,6 @@ def main():
     classes_info = parse_foodon.get_classes()
     classes_info_skeleton, candidate_entities = parse_foodon.get_seeded_skeleton(classes_info)
 
-    candidate_entities = list(set(candidate_entities))
-    candidate_entities.sort()
-
     # run
     if configparser.getbool('grid_search'):
         grid_search(classes_info_skeleton, candidate_entities, configparser)
