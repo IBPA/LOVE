@@ -49,7 +49,7 @@ class AnalyseOntology:
 
         # Load data from files
         ground_truth = load_pkl(self.gt_entitymapping)
-        self.gtDF = _getPairsfromDict(ground_truth)
+        self.gtDF = self._getPairsfromDict(ground_truth)
         self.foodonDF = pd.read_csv(self.foodonpairs, delimiter="\t")
         self.foodon_graph = {k: g["Parent"].tolist() for k, g in self.foodonDF.groupby("Child")}
 
@@ -66,8 +66,7 @@ class AnalyseOntology:
 
         return childOnly
 
-    @staticmethod
-    def _getPairsfromDict(candidate_dict):
+    def _getPairsfromDict(self, candidate_dict):
         pairs = []
 
         for parent in candidate_dict.keys():
@@ -81,8 +80,7 @@ class AnalyseOntology:
 
         return pairsDF
 
-    @staticmethod
-    def find_all_paths(graph, start, end, path=[]):
+    def find_all_paths(self, graph, start, end, path=[]):
         path = path + [start]
         if start == end:
             return [path]
@@ -96,8 +94,7 @@ class AnalyseOntology:
                     paths.append(newpath)
         return paths
 
-    @staticmethod
-    def check_lineage(gtp, pp, graph):
+    def check_lineage(self, gtp, pp, graph):
         # Inputs: gtp - ground truth parent, pp - predicted parent
         paths = self.find_all_paths(graph, gtp, pp)
         # print('Check Lineage',pp,' ',gtp)
