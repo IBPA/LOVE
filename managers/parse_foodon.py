@@ -101,39 +101,40 @@ def merge_up(foodonDF):
     candidates = []
     for c in childOnly:
         selectPair = foodonDF.loc[foodonDF['Child'] == c].to_numpy()
-        candidates.append(selectPair[0,1])
+        candidates.append(selectPair[0, 1])
         uniqueCandidates = np.unique(np.array(candidates))
 
     min_count = 2
     consolidatedFoodon = []
 
-    merged=1
+    merged = 1
 
     for cd in uniqueCandidates:
-        selectPairs = foodonDF.loc[foodonDF['Parent'] == cd].to_numpy() #look up children
-        cd_children = list(selectPairs[:,0])
-        cd_parents = foodonDF.loc[foodonDF['Child'] == cd].to_numpy() #look up parents
+        selectPairs = foodonDF.loc[foodonDF['Parent'] == cd].to_numpy()  # look up children
+        cd_children = list(selectPairs[:, 0])
+        cd_parents = foodonDF.loc[foodonDF['Child'] == cd].to_numpy()  # look up parents
 
         # merge-up can only be done if candidate's children does NOT have another candidate
-        if len(selectPairs) <= min_count and (set(cd_children).issubset(set(childOnly))) and len(cd_parents)==1:
+        if len(selectPairs) <= min_count and (set(cd_children).issubset(set(childOnly))) and len(cd_parents) ==1:
             # delete pair candidate as a parent,
             # insert a child-parent pair where - child is children of candidate and parent is the parent of candidate
             for row_parent in cd_parents:
                 parent = row_parent[1]
-                for row_child in selectPairs: # for all the child-parent pairs for candidate
+                for row_child in selectPairs:  # for all the child-parent pairs for candidate
                     child = row_child[0]
-                    consolidatedFoodon.append([child,parent])
+                    consolidatedFoodon.append([child, parent])
                     merged = merged+1
-        else: #copy all pairs of (child, candidate) as is
+        else:  # copy all pairs of (child, candidate) as is
             for row in selectPairs:
-                consolidatedFoodon.append([row[0],row[1]])
+                consolidatedFoodon.append([row[0], row[1]])
 
     consolidatedfoodonDF = pd.DataFrame(consolidatedFoodon, columns=['Child', 'Parent'])
     return consolidatedfoodonDF
 
+
 def edit_label(labels_tmp):
-    for idx,row in labels_tmp.iterrows():
-        label=row['Preferred Label']
+    for idx, row in labels_tmp.iterrows():
+        label = row['Preferred Label']
         if not('foodon' in label):
             label_replaced = label.replace('food product', '')
             label_replaced = label_replaced.replace(' food ', '')
@@ -149,33 +150,36 @@ def edit_label(labels_tmp):
             row['Preferred Label'] = label_replaced
     return(labels_tmp)
 
+
 def filter_ontology(dfObj, classname):
     # Remove class and its children from the ontology . Only works if the children are leaf nodes
-    indexNames = dfObj[ dfObj['Parent'] == classname ].index
-    dfObj.drop(indexNames , inplace=True)
-    indexNames = dfObj[ dfObj['Child'] == classname ].index
-    dfObj.drop(indexNames , inplace=True)
+    indexNames = dfObj[dfObj['Parent'] == classname].index
+    dfObj.drop(indexNames, inplace=True)
+    indexNames = dfObj[dfObj['Child'] == classname].index
+    dfObj.drop(indexNames, inplace=True)
     return dfObj
 
+
 def get_subtree(df, rootclass ):
-    subtreeDF,nextlevelclasses = traverse_next_level(df,['http://purl.obolibrary.org/obo/FOODON_00001002'])
+    subtreeDF, nextlevelclasses = traverse_next_level(df, ['http://purl.obolibrary.org/obo/FOODON_00001002'])
     while(len(nextlevelclasses)>0):
-        pairsDF,nextlevelclasses = traverse_next_level(df,nextlevelclasses)
-        subtreeDF = pd.concat([subtreeDF,pairsDF], ignore_index=True)
+        pairsDF, nextlevelclasses = traverse_next_level(df, nextlevelclasses)
+        subtreeDF = pd.concat([subtreeDF, pairsDF], ignore_index=True)
     return subtreeDF
+
 
 def traverse_next_level(df,classnames):
     nextlevel = []
     subtree_pairs = []
     for parent in classnames:
         selectedPairs = df[df['Parent'] == parent]
-        for idex,pair in selectedPairs.iterrows():
-            subtree_pairs.append([pair['Child'],pair['Parent']])
-            ifparent = df[df['Parent']==pair['Child']] #Check if it is a leaf node
+        for idex, pair in selectedPairs.iterrows():
+            subtree_pairs.append([pair['Child'], pair['Parent']])
+            ifparent = df[df['Parent'] == pair['Child']]  # Check if it is a leaf node
             if ifparent.empty != True:
                 nextlevel.append(pair['Child'])
     subtreeDF = pd.DataFrame(subtree_pairs, columns=['Child', 'Parent'])
-    return(subtreeDF,nextlevel)
+    return(subtreeDF, nextlevel)
 
 
 class ParseFoodOn:
@@ -199,36 +203,35 @@ class ParseFoodOn:
         self.overwrite_pkl = self.configparser.getint('overwrite_pickle_flag')
         self.outputFoodOn = self.configparser.getstr('outputFoodOn')
 
-        #Create dataframe for FoodON ontology
+        # Create dataframe for FoodON ontology
         # 1.Read specified columns from FoodON.csv file
-        foodon=pd.read_csv(self.filepath,usecols =['Class ID','Parents','Preferred Label'])
-        #2.Create dictionary of URI and ClassLabel
+        foodon = pd.read_csv(self.filepath, usecols=['Class ID', 'Parents', 'Preferred Label'])
+        # 2.Create dictionary of URI and ClassLabel
         labels_tmp = foodon[["Class ID", "Preferred Label"]].copy()
-        labels_tmp=edit_label(labels_tmp)
-        self.labels=labels_tmp.set_index('Class ID')['Preferred Label'].to_dict()
-        #3.Create data frame with columns - child and all its' parents
+        labels_tmp = edit_label(labels_tmp)
+        self.labels = labels_tmp.set_index('Class ID')['Preferred Label'].to_dict()
+        # 3.Create data frame with columns - child and all its' parents
         foodonOrigDF = (foodon[["Class ID", "Parents"]].copy()).rename(columns={'Class ID': 'Child'})
-        #4.Split above DF into pairs of Child-Parent
+        # 4.Split above DF into pairs of Child-Parent
         pairs = []
-        for index,row in foodonOrigDF.iterrows():
+        for index, row in foodonOrigDF.iterrows():
             parents = str(row['Parents'])
             parentList = parents.split("|")
             for pClass in parentList:
                 child = str(row['Child'])
-                pairs.append([child,pClass])
+                pairs.append([child, pClass])
         self.foodonDF = pd.DataFrame(pairs, columns=['Child', 'Parent'])
-        self.foodonDF = filter_ontology(self.foodonDF,'http://purl.obolibrary.org/obo/FOODON_00001872')
-        self.foodonDF = get_subtree(self.foodonDF,'http://purl.obolibrary.org/obo/FOODON_00001002')
+        self.foodonDF = filter_ontology(self.foodonDF, 'http://purl.obolibrary.org/obo/FOODON_00001872')
+        self.foodonDF = get_subtree(self.foodonDF, 'http://purl.obolibrary.org/obo/FOODON_00001002')
 
         # In foodonDF, replace URI by label
-        for idx,pair in self.foodonDF.iterrows():
-            pair['Child']=self.labels[pair['Child']]
+        for idx, pair in self.foodonDF.iterrows():
+            pair['Child'] = self.labels[pair['Child']]
             if pair['Parent'] in self.labels:
-                pair['Parent']=self.labels[pair['Parent']]
-        self.foodonDF.to_csv(self.outputFoodOn,sep='\t',index=False)
+                pair['Parent'] = self.labels[pair['Parent']]
+        self.foodonDF.to_csv(self.outputFoodOn, sep='\t', index=False)
 
         log.info('Parsed FoodON Ontology file.\n')
-
 
     def get_parent_classes(self):
         parentList = list(self.foodonDF['Parent'])
@@ -236,56 +239,54 @@ class ParseFoodOn:
         parentUnique = np.unique(parentNP)
         return(list(parentUnique))
 
-
-    def get_classes(self,merge_min_count=2):
+    def get_classes(self, merge_min_count=2):
         """
         Get all candidate classes.
         """
 
         # Check for previously saved pickle file
         ret_val = load_pkl(self.fullontology_pkl)
-        if ret_val !=0: # Pickle file exists
-            if self.overwrite_pkl !=1: # Do not create a new pickle file
+        if ret_val != 0:  # Pickle file exists
+            if self.overwrite_pkl != 1:  # Do not create a new pickle file
                 return(ret_val)
 
         print('Creating FoodON ground truth Ontology Structure\n')
         # Get candidate classes (Will be used to build the Skeleton version of FoodON)
         uniqueCandidates = get_candidate_classes(self.foodonDF)
         # Create a dictionary version -> child:all parents
-        childparentdict = {k: g["Parent"].tolist() for k,g in self.foodonDF.groupby("Child")}
+        childparentdict = {k: g["Parent"].tolist() for k, g in self.foodonDF.groupby("Child")}
 
-        #Merging-up
-        #foodonDF = merge_up(foodonDF)
-        #uniqueCandidates = get_candidate_classes(foodonDF)
-
+        # Merging-up
+        # foodonDF = merge_up(foodonDF)
+        # uniqueCandidates = get_candidate_classes(foodonDF)
 
         # Creating the Skeleton verion of FoodON
         end = self.labels['http://purl.obolibrary.org/obo/FOODON_00001002']
         candidate_dict = {}
         for c in uniqueCandidates:
-            paths = find_all_paths(childparentdict,c,end)
+            paths = find_all_paths(childparentdict, c, end)
             paths_as_list_of_tuples = []
             if paths != []:
                 for p in paths:
                     paths_as_list_of_tuples.append(tuple(p))
                 children = []
                 childrenrows = self.foodonDF.loc[self.foodonDF['Parent'] == c]
-                for index,row in childrenrows.iterrows():
+                for index, row in childrenrows.iterrows():
                     child = row['Child']
                     children = children + [child]
                     uniquechildren = list(np.unique(np.array(children)))
                 # Create new tuple with heirachypaths and children
                 #  key = candidate , Value = tuple.
-                value_tuple = (paths_as_list_of_tuples,uniquechildren)
+                value_tuple = (paths_as_list_of_tuples, uniquechildren)
                 candidate_dict[c] = value_tuple
-        save_pkl(candidate_dict,self.fullontology_pkl)
+        save_pkl(candidate_dict, self.fullontology_pkl)
 
         return candidate_dict
 
-    def get_seeded_skeleton(self,candidate_dict,seed_count=2):
+    def get_seeded_skeleton(self, candidate_dict, seed_count=2):
 
         ret_val = load_pkl(self.skeleton_and_entities_pkl)
-        if ret_val !=0:
+        if ret_val != 0:
             return(ret_val)
 
         entities_to_populate = []
@@ -295,20 +296,20 @@ class ParseFoodOn:
             value = candidate_dict[cd]
             paths = value[0]
             children = value[1]
-            #entities = list(set(children) - set(key_list))
+            # entities = list(set(children) - set(key_list))
             entities = children
             if len(entities) > seed_count:
-                seeds = random.choices(entities,k=seed_count)
+                seeds = random.choices(entities, k=seed_count)
             else:
-                seeds=[random.choice(entities)]
+                seeds = [random.choice(entities)]
             remaining_entities = list(set(entities) - set(seeds))
             remaining_entities = list(set(remaining_entities) - set(all_parents))
-            update_value = (paths,seeds)
+            update_value = (paths, seeds)
             candidate_dict[cd] = update_value
             entities_to_populate = entities_to_populate + remaining_entities
 
-        return_tuple = (candidate_dict,set(entities_to_populate))
-        save_pkl(return_tuple,self.skeleton_and_entities_pkl)
+        return_tuple = (candidate_dict, set(entities_to_populate))
+        save_pkl(return_tuple, self.skeleton_and_entities_pkl)
         return return_tuple
 
 
@@ -316,5 +317,5 @@ if __name__ == '__main__':
     parse_foodon = ParseFoodOn('../config/foodon_parse.ini')
 
     class_list = parse_foodon.get_classes()
-    #ret_val = parse_foodon.get_seeded_skeleton(class_list)
+    # ret_val = parse_foodon.get_seeded_skeleton(class_list)
     print('End of code')
