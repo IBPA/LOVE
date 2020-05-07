@@ -204,7 +204,7 @@ class ParseFoodOn:
         foodon=pd.read_csv(self.filepath,usecols =['Class ID','Parents','Preferred Label'])
         #2.Create dictionary of URI and ClassLabel
         labels_tmp = foodon[["Class ID", "Preferred Label"]].copy()
-        labels_tmp=edit_label(labels_tmp)
+        # labels_tmp=edit_label(labels_tmp)
         self.labels=labels_tmp.set_index('Class ID')['Preferred Label'].to_dict()
         #3.Create data frame with columns - child and all its' parents
         foodonOrigDF = (foodon[["Class ID", "Parents"]].copy()).rename(columns={'Class ID': 'Child'})
