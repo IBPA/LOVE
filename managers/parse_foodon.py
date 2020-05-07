@@ -208,7 +208,7 @@ class ParseFoodOn:
         foodon = pd.read_csv(self.filepath, usecols=['Class ID', 'Parents', 'Preferred Label'])
         # 2.Create dictionary of URI and ClassLabel
         labels_tmp = foodon[["Class ID", "Preferred Label"]].copy()
-        labels_tmp = edit_label(labels_tmp)
+
         self.labels = labels_tmp.set_index('Class ID')['Preferred Label'].to_dict()
         # 3.Create data frame with columns - child and all its' parents
         foodonOrigDF = (foodon[["Class ID", "Parents"]].copy()).rename(columns={'Class ID': 'Child'})
@@ -232,6 +232,7 @@ class ParseFoodOn:
         self.foodonDF.to_csv(self.outputFoodOn, sep='\t', index=False)
 
         log.info('Parsed FoodON Ontology file.\n')
+
 
     def get_parent_classes(self):
         parentList = list(self.foodonDF['Parent'])

@@ -63,4 +63,3 @@ def load_pkl(load_from):
         obj = pickle.load(fid)
 
     return obj
-
