@@ -11,100 +11,60 @@ To-do:
 import logging as log
 import os
 import sys
-import random
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
-# third party imports
-import pandas as pd
-import numpy as np
-import pickle
-
-
 # local imports
 from utils.config_parser import ConfigParser
+from utils.utilities import load_pkl
 
 
-def load_pkl(load_from):
-    """
-    Load the pickled object
-    Inputs:
-        load_from : Filepath to pickled object
-    Output:
-        obj: Pickled Object
-    """
-    try:
-        with open(load_from, 'rb') as fid:
-            obj = pickle.load(fid)
-            return obj
-    except FileNotFoundError:
-        return(0)
-    
-def get_entities(pairsDF):
-    #Step 1
-    #foodonDF=pd.read_csv("FoodONpairs.txt",delimiter="\t")
-    parentList = list(pairsDF['Parent'])
-    parentNP = np.array(parentList) 
-    parentUnique = np.unique(parentNP)
-    print('get_entities function',len(parentUnique))
-    # Step 2 - ONLY children - ie leaf-nodes
-    childOnly = list(set(pairsDF['Child'])-set(parentUnique))
-    return(childOnly)
-  
-
-
-class AnalyseOntology:
+class AnalyzeOntology:
     def __init__(self, config_filepath):
         configparser = ConfigParser(config_filepath)
-        self.foodonpairs = configparser.getstr('foodonpairs')
-        self.gt_entitymapping = configparser.getstr('gt_entitymapping')
+        gt_ontology_filename = configparser.getstr('gt_entitymapping')
+        self.gt_ontology = load_pkl(gt_ontology_filename)
 
-        # Load data from files
-        ground_truth = load_pkl(self.gt_entitymapping)
-        self.gtDF = self._getPairsfromDict(ground_truth)
-        self.foodonDF = pd.read_csv(self.foodonpairs, delimiter="\t")
-        self.foodon_graph = {k: g["Parent"].tolist() for k, g in self.foodonDF.groupby("Child")}
+    def get_stats(self, predictedDF, allow_distance=0):
+        TP = 0
+        FP = 0
+        fp_list = []
+        distance_distribution = []
 
-    @staticmethod
-    def get_entities(pairsDF):
-        # Step 1
-        # foodonDF=pd.read_csv("FoodONpairs.txt",delimiter="\t")
-        parentList = list(pairsDF['Parent'])
-        parentNP = np.array(parentList)
-        parentUnique = np.unique(parentNP)
-        print('get_entities function', len(parentUnique))
-        # Step 2 - ONLY children - ie leaf-nodes
-        childOnly = list(set(pairsDF['Child'])-set(parentUnique))
+        for idx, pair in predictedDF.iterrows():
+            predicted_class = pair['Parent']
+            gt_classes = []
+            for key, value in self.gt_ontology.items():
+                if pair['Child'] in value[1]:
+                    gt_classes.append(key)
 
-        return childOnly
+            distance_list = []
+            # common_ancestor_list = []
+            for gt_class in gt_classes:
+                predicted_paths = [path[::-1] for path in self.gt_ontology[predicted_class][0]]
+                gt_paths = [path[::-1] for path in self.gt_ontology[gt_class][0]]
 
-    def _getPairsfromDict(self, candidate_dict):
-        pairs = []
+                for pred_path in predicted_paths:
+                    for gt_path in gt_paths:
+                        common_path = set(pred_path).intersection(gt_path)
+                        common_path = [c for c in gt_path if c in common_path]
 
-        for parent in candidate_dict.keys():
-            value = candidate_dict[parent]
-            entities = value[1]
+                        distance = len(pred_path) + len(gt_path) - 2*len(common_path)
+                        # common_ancestor = common_path[-1]
 
-            for e in entities:
-                pairs.append([e, parent])
+                        distance_list.append(distance)
+                        # common_ancestor_list.append(common_ancestor)
 
-        pairsDF = pd.DataFrame(pairs, columns=['Child', 'Parent'])
+            idx_shortest = distance_list.index(min(distance_list))
+            shortest_distance = distance_list[idx_shortest]
+            # shortest_common_ancestor = common_ancestor_list[idx_shortest]
+            distance_distribution.append(shortest_distance)
 
-            if ((self.gtDF['Child'] == child) & (self.gtDF['Parent'] == parent)).any():
-                # simple check whether it exists in GT
-                TP = TP+1
+            if shortest_distance <= allow_distance:
+                TP += 1
             else:
-                FP = FP + 1
-                fp_list.append([child, parent])
-        return (TP, FP, fp_list)
+                FP += 1
+                fp_list.append((pair['Parent'], pair['Child']))
 
+        return (TP, FP, fp_list, distance_distribution)
 
-if __name__ == '__main__':
-    ao = AnalyseOntology('../config/analyze_ontology.ini')
-    # self.populated_pairs = load_pkl('/Users/tarininaravane/Documents/FoodOntologyAI/pairs_by_iteration.pkl')
-    mock_file = '/Users/tarininaravane/Documents/FoodOntologyAI/mock_pred_pairs.txt'
-    pairsDF = pd.read_csv(mock_file, delimiter="\t")
-    # Add loop here to go through all populated ontology files
-    tp, fp, fp_list = ao.get_stats(pairsDF)
-    print('TP is ', tp)
-    print('FP is ', fp)

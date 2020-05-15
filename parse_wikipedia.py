@@ -10,16 +10,12 @@ To-do:
 """
 # standard imports
 import argparse
-import ast
 import logging as log
-import os
-import sys
 
 # third party imports
 import pandas as pd
 
 # local imports
-from managers.fdc_data import FdcDataManager
 from managers.fdc_preprocess import FdcPreprocessManager
 from managers.wikipedia import WikipediaManager
 from utils.config_parser import ConfigParser
@@ -55,9 +51,28 @@ def main():
     args = parse_argument()
     configparser = ConfigParser(args.config_file)
 
-    # read FDC vocabs
-    with open(configparser.getstr('input_filepath'), 'r') as file:
-        vocabs = file.read().splitlines()
+    # need to apply preprocessing
+    fpm = FdcPreprocessManager(configparser.getstr('preprocess_config'))
+
+    # read FoodOn vocabs
+    labels = []
+    pd_foodon_pairs = pd.read_csv('./data/FoodOn/foodonpairs.txt', sep='\t')
+    labels.extend(pd_foodon_pairs['Parent'].tolist())
+    labels.extend(pd_foodon_pairs['Child'].tolist())
+
+    vocabs = []
+    for label in labels:
+        vocabs.extend(label.lower().split())
+    vocabs = fpm.preprocess_column(pd.Series(list(set(vocabs))), load_model=True).tolist()
+    vocabs = [vocab for vocab in vocabs if vocab != '']
+    queries = []
+    for vocab in vocabs:
+        if len(vocab.split()) != 1:
+            queries.extend(vocab.split())
+            queries.append(vocab)
+        else:
+            queries.append(vocab)
+    queries = list(set(queries))
 
     # get summaries of the wikipedia entry
     wm = WikipediaManager()
@@ -71,7 +86,7 @@ def main():
         prev_failed = None
 
     pd_summary, pd_failed = wm.get_summary(
-        vocabs,
+        queries,
         prev_summary=prev_summary,
         prev_failed=prev_failed)
 
@@ -89,10 +104,6 @@ def main():
     pd_failed.to_csv(configparser.getstr('failed_filepath'),
                      sep='\t',
                      index=False)
-
-    # apply same preprocessing done to the FDC data
-    fpm = FdcPreprocessManager(
-        configparser.getstr('preprocess_config'))
 
     # preprocess columns
     pd_summary['summary_preprocessed'] = fpm.preprocess_column(

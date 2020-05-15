@@ -58,12 +58,14 @@ class WikipediaManager:
         num_queries = len(queries)
         log_every = [i * int(num_queries / NUM_LOGS) for i in range(NUM_LOGS)]
 
+        log.info(queries)
+
         for idx, query in enumerate(queries):
             if idx in log_every:
                 log.info('Processing query {}/{}'.format(idx, num_queries))
 
             try:
-                summary = wikipedia.WikipediaPage(query).summary.replace('\n', ' ')
+                summary = wikipedia.page(query).content.replace('\n', ' ')
                 summaries.append([query, summary])
             except:
                 failed_queries.append([query])

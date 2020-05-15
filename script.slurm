@@ -4,7 +4,7 @@
 #SBATCH --job-name=FoodOntology # Job name
 #SBATCH --nodes=1 # should never be anything other than 1
 #SBATCH --ntasks=1 # number of cpus to use
-#SBATCH --time=12:00:00 # Acceptable time formats include "minutes", "minutes:seconds", "hours:minutes:seconds", "days-hours", "days-hours:minutes" and "days-hours:minutes:seconds".
+#SBATCH --time=16:00:00 # Acceptable time formats include "minutes", "minutes:seconds", "hours:minutes:seconds", "days-hours", "days-hours:minutes" and "days-hours:minutes:seconds".
 #SBATCH --mem=7000 # Memory pool for all cores (see also --mem-per-cpu)
 #SBATCH --partition=production # cluster partition
 #SBATCH --output=./output/log/stdout_%j.out # File to which STDOUT will be written

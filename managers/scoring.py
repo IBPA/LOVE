@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 import numpy as np
 import pandas as pd
 from gensim.models import KeyedVectors
+# import textdistance
 
 # local imports
 from fdc_preprocess import FdcPreprocessManager
@@ -58,7 +59,6 @@ class ScoringManager:
 
         # parse config file
         self.alpha = scoring_config.getfloat('alpha')
-        self.beta = scoring_config.getfloat('beta')
         self.num_mapping_per_iteration = scoring_config.getint('num_mapping_per_iteration')
         self.initial_siblings_scores = scoring_config.getstr('initial_siblings_scores')
         self.initial_parents_scores = scoring_config.getstr('initial_parents_scores')
@@ -66,7 +66,6 @@ class ScoringManager:
         self.populated_filepath = scoring_config.getstr('populated_filepath')
 
         log.debug('alpha: %f', self.alpha)
-        log.debug('beta: %f', self.beta)
         log.debug('num_mapping_per_iteration: %d', self.num_mapping_per_iteration)
         log.debug('initial_siblings_scores: %s', self.initial_siblings_scores)
         log.debug('initial_parents_scores: %s', self.initial_parents_scores)
@@ -97,6 +96,12 @@ class ScoringManager:
         self.pd_class_label_embeddings = self._calculate_label_embeddings(self.all_class_labels)
         self.pd_entity_label_embeddings = self._calculate_label_embeddings(self.all_entity_labels)
 
+        # save_pkl(self.pd_class_label_embeddings, './output/class_label_embeddings.pkl')
+        # save_pkl(self.pd_entity_label_embeddings, './output/entity_label_embeddings.pkl')
+
+        # self.pd_class_label_embeddings = load_pkl('./output/class_label_embeddings.pkl')
+        # self.pd_entity_label_embeddings = load_pkl('./output/entity_label_embeddings.pkl')
+
         # do initial calculation of the scores
         self.pd_siblings_scores, self.pd_parents_scores = self._calculate_initial_scores()
 
@@ -108,14 +113,14 @@ class ScoringManager:
         return list(set(input_list))
 
     @staticmethod
-    def _calculate_cosine_similarity(array1, array2):
+    def _cosine_similarity(array1, array2):
         with np.errstate(all='ignore'):
             similarity = np.dot(array1, array2) / (np.linalg.norm(array1) * np.linalg.norm(array2))
 
         if np.isnan(similarity):
             similarity = 0
 
-        return (similarity + 1.0) / 2
+        return similarity
 
     def _caculate_embeddings(self, label):
         embedding = 0
@@ -152,46 +157,41 @@ class ScoringManager:
         class_label, entity_label = pair[0], pair[1]
         siblings = self.candidate_classes_info[class_label][1]
 
-        siblings_embedding = 0
-        for sibling in siblings:
-            siblings_embedding += self.pd_entity_label_embeddings.loc[sibling, 'vector']
-        siblings_embedding /= len(siblings)
+        # similarity = 0
+        # for sibling in siblings:
+        #     similarity += textdistance.lcsseq.normalized_similarity(sibling, entity_label)
+        # similarity /= len(siblings)
 
+        # return similarity
+
+        num_nonzero_siblings = 0
+        siblings_embedding = 0
+
+        for sibling in siblings:
+            sibling_embedding = self.pd_entity_label_embeddings.loc[sibling, 'vector']
+
+            if np.count_nonzero(sibling_embedding):
+                siblings_embedding += sibling_embedding
+                num_nonzero_siblings += 1
+
+        if num_nonzero_siblings == 0:
+            return 0
+
+        siblings_embedding /= num_nonzero_siblings
         entity_embeddings = self.pd_entity_label_embeddings.loc[entity_label, 'vector']
 
-        score = self._calculate_cosine_similarity(siblings_embedding, entity_embeddings)
+        score = self._cosine_similarity(siblings_embedding, entity_embeddings)
 
         return score
 
     def _calculate_parents_score(self, pair):
         class_label, entity_label = pair[0], pair[1]
+        # return textdistance.lcsseq.normalized_similarity(class_label, entity_label)
+
         entity_embeddings = self.pd_entity_label_embeddings.loc[entity_label, 'vector']
+        class_embeddings = self.pd_class_label_embeddings.loc[class_label, 'vector']
 
-        paths_list = self.candidate_classes_info[class_label][0]
-        num_paths = len(paths_list)
-
-        score = 0
-        for i in range(num_paths):
-            path = paths_list[i][::-1]
-            path_depth = len(paths_list[i])
-
-            numerator = 0
-            denominator = 0
-            for j in range(path_depth):
-                parent_embeddings = self.pd_class_label_embeddings.loc[path[j], 'vector']
-                similarity = self._calculate_cosine_similarity(parent_embeddings, entity_embeddings)
-
-                if path_depth == 1:
-                    weight = 1.0
-                else:
-                    weight = math.exp(j*self.beta / (path_depth-1))
-
-                numerator += similarity * weight
-                denominator += weight
-
-            score += (numerator / denominator)
-
-        score /= num_paths
+        score = self._cosine_similarity(class_embeddings, entity_embeddings)
 
         return score
 
@@ -284,6 +284,10 @@ class ScoringManager:
             for (candidate_class, candidate_entity) in top_n_scores:
                 self.candidate_classes_info[candidate_class][1].append(candidate_entity)
 
+            # save progress
+            iteration_pairs[iteration] = top_n_scores.copy()
+            iteration_populated_dict[iteration] = self.candidate_classes_info.copy()
+
             if len(self.candidate_entities) <= self.num_mapping_per_iteration:
                 break
 
@@ -322,10 +326,6 @@ class ScoringManager:
 
             t2 = time()
             log.info('Elapsed time for updating scores: %.2f minutes', (t2-t1)/60)
-
-            # save progress
-            iteration_pairs[iteration] = top_n_scores.copy()
-            iteration_populated_dict[iteration] = self.candidate_classes_info.copy()
 
             iteration += 1
 

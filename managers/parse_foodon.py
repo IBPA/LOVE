@@ -18,168 +18,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
 # third party imports
 import pandas as pd
-import numpy as np
-import pickle
+import networkx as nx
 
 # local imports
 from utils.config_parser import ConfigParser
-
-
-def save_pkl(obj, save_to):
-    """
-    Pickle the object
-    Inputs:
-        obj: Object to pickle
-        save_to : Filepath to pickle the object to
-    """
-    with open(save_to, 'wb') as fid:
-        pickle.dump(obj, fid)
-
-
-def load_pkl(load_from):
-    """
-    Load the pickled object
-    Inputs:
-        load_from : Filepath to pickled object
-    Output:
-        obj: Pickled Object
-    """
-    try:
-        with open(load_from, 'rb') as fid:
-            obj = pickle.load(fid)
-            return obj
-    except FileNotFoundError:
-        return(0)
-
-
-# Reference : https://www.python.org/doc/essays/graphs/
-def find_all_paths(graph, start, end, path=[]):
-    path = path + [start]
-    if start == end:
-        return [path]
-    if not start in graph:
-        return []
-    paths = []
-    for node in graph[start]:
-        if node not in path:
-            newpaths = find_all_paths(graph, node, end, path)
-            for newpath in newpaths:
-                paths.append(newpath)
-    return paths
-
-
-def get_parent_classes(foodonDF):
-    parentList = list(foodonDF['Parent'])
-    parentNP = np.array(parentList)
-    parentUnique = np.unique(parentNP)
-    return(parentUnique)
-
-
-def get_candidate_classes(foodonDF):
-    # Step 1 - All Parents
-    parentList = list(foodonDF['Parent'])
-    parentNP = np.array(parentList)
-    parentUnique = np.unique(parentNP)
-    # Step 2 - ONLY children - ie entities
-    childOnly = list(set(foodonDF['Child'])-set(parentUnique))
-    # Step 3 - candidates (ie parents of the entities)
-    candidates = []
-    for c in childOnly:
-        selectPair = foodonDF.loc[foodonDF['Child'] == c].to_numpy()
-        candidates.append(selectPair[0, 1])
-        uniqueCandidates = np.unique(np.array(candidates))
-    return(uniqueCandidates)
-
-
-def merge_up(foodonDF):
-    parentList = list(foodonDF['Parent'])
-    parentNP = np.array(parentList)
-    parentUnique = np.unique(parentNP)
-    # Step 2 - ONLY children - ie entities
-    childOnly = list(set(foodonDF['Child'])-set(parentUnique))
-    # Step 3 - candidates (ie parents of the entities)
-    candidates = []
-    for c in childOnly:
-        selectPair = foodonDF.loc[foodonDF['Child'] == c].to_numpy()
-        candidates.append(selectPair[0, 1])
-        uniqueCandidates = np.unique(np.array(candidates))
-
-    min_count = 2
-    consolidatedFoodon = []
-
-    merged = 1
-
-    for cd in uniqueCandidates:
-        selectPairs = foodonDF.loc[foodonDF['Parent'] == cd].to_numpy()  # look up children
-        cd_children = list(selectPairs[:, 0])
-        cd_parents = foodonDF.loc[foodonDF['Child'] == cd].to_numpy()  # look up parents
-
-        # merge-up can only be done if candidate's children does NOT have another candidate
-        if len(selectPairs) <= min_count and (set(cd_children).issubset(set(childOnly))) and len(cd_parents) ==1:
-            # delete pair candidate as a parent,
-            # insert a child-parent pair where - child is children of candidate and parent is the parent of candidate
-            for row_parent in cd_parents:
-                parent = row_parent[1]
-                for row_child in selectPairs:  # for all the child-parent pairs for candidate
-                    child = row_child[0]
-                    consolidatedFoodon.append([child, parent])
-                    merged = merged+1
-        else:  # copy all pairs of (child, candidate) as is
-            for row in selectPairs:
-                consolidatedFoodon.append([row[0], row[1]])
-
-    consolidatedfoodonDF = pd.DataFrame(consolidatedFoodon, columns=['Child', 'Parent'])
-    return consolidatedfoodonDF
-
-
-def edit_label(labels_tmp):
-    for idx, row in labels_tmp.iterrows():
-        label = row['Preferred Label']
-        if not('foodon' in label):
-            label_replaced = label.replace('food product', '')
-            label_replaced = label_replaced.replace(' food ', '')
-            label_replaced = label_replaced.replace('food ', ' ')
-            label_replaced = label_replaced.replace(' food', ' ')
-            label_replaced = label_replaced.replace(' products ', ' ')
-            label_replaced = label_replaced.replace('products ', ' ')
-            label_replaced = label_replaced.replace(' products', ' ')
-            label_replaced = label_replaced.replace(' product ', ' ')
-            label_replaced = label_replaced.replace('product ', ' ')
-            label_replaced = label_replaced.replace(' product', ' ')
-
-            row['Preferred Label'] = label_replaced
-    return(labels_tmp)
-
-
-def filter_ontology(dfObj, classname):
-    # Remove class and its children from the ontology . Only works if the children are leaf nodes
-    indexNames = dfObj[dfObj['Parent'] == classname].index
-    dfObj.drop(indexNames, inplace=True)
-    indexNames = dfObj[dfObj['Child'] == classname].index
-    dfObj.drop(indexNames, inplace=True)
-    return dfObj
-
-
-def get_subtree(df, rootclass ):
-    subtreeDF, nextlevelclasses = traverse_next_level(df, ['http://purl.obolibrary.org/obo/FOODON_00001002'])
-    while(len(nextlevelclasses)>0):
-        pairsDF, nextlevelclasses = traverse_next_level(df, nextlevelclasses)
-        subtreeDF = pd.concat([subtreeDF, pairsDF], ignore_index=True)
-    return subtreeDF
-
-
-def traverse_next_level(df,classnames):
-    nextlevel = []
-    subtree_pairs = []
-    for parent in classnames:
-        selectedPairs = df[df['Parent'] == parent]
-        for idex, pair in selectedPairs.iterrows():
-            subtree_pairs.append([pair['Child'], pair['Parent']])
-            ifparent = df[df['Parent'] == pair['Child']]  # Check if it is a leaf node
-            if ifparent.empty != True:
-                nextlevel.append(pair['Child'])
-    subtreeDF = pd.DataFrame(subtree_pairs, columns=['Child', 'Parent'])
-    return(subtreeDF, nextlevel)
+from utils.utilities import file_exists, save_pkl, load_pkl
+from utils.set_logging import set_logging
 
 
 class ParseFoodOn:
@@ -198,125 +42,253 @@ class ParseFoodOn:
 
         # read configuration file
         self.filepath = self.configparser.getstr('filepath')
-        self.fullontology_pkl = self.configparser.getstr('fullontology_pkl')
+        self.full_ontology_pkl = self.configparser.getstr('full_ontology_pkl')
+        self.candidate_ontology_pkl = self.configparser.getstr('candidate_ontology_pkl')
         self.skeleton_and_entities_pkl = self.configparser.getstr('skeleton_and_entities_pkl')
-        self.overwrite_pkl = self.configparser.getint('overwrite_pickle_flag')
+        self.overwrite_pkl = self.configparser.getbool('overwrite_pickle_flag')
         self.outputFoodOn = self.configparser.getstr('outputFoodOn')
 
-        # Create dataframe for FoodON ontology
+        # generate pairs from csv file
+        self.pd_foodon_pairs = self.generate_pairs()
+        self.all_classes, self.all_entities = self.get_classes_and_entities()
+        self.foodon_graph, self.graph_dict, self.graph_dict_flip = self.generate_graph()
+
+    def generate_graph(self):
+        graph_dict = {k: v for v, k in enumerate(self.all_classes)}
+        graph_dict_flip = {v: k for v, k in enumerate(self.all_classes)}
+
+        G = nx.DiGraph()
+
+        for _, row in self.pd_foodon_pairs.iterrows():
+            if row['Parent'] in self.all_classes and row['Child'] in self.all_classes:
+                node_from = graph_dict[row['Parent']]
+                node_to = graph_dict[row['Child']]
+                G.add_edge(node_from, node_to)
+
+        return G, graph_dict, graph_dict_flip
+
+    def get_classes_and_entities(self):
+        all_classes = self.pd_foodon_pairs['Parent'].tolist()
+        all_classes = list(set(all_classes))
+        all_classes.sort()
+        log.debug('Found %d classes.', len(all_classes))
+
+        child = self.pd_foodon_pairs['Child'].tolist()
+        child = list(set(child))
+        child.sort()
+        all_entities = [c for c in child if c not in all_classes]
+        log.debug('Found %d entities.', len(all_entities))
+
+        return all_classes, all_entities
+
+    def generate_pairs(self):
+        log.info('Generating pairs of FoodOn.')
+
+        if file_exists(self.outputFoodOn) and not self.overwrite_pkl:
+            log.info('Using pre-generated pairs file.')
+            return pd.read_csv(self.outputFoodOn, sep='\t')
+
         # 1.Read specified columns from FoodON.csv file
         foodon = pd.read_csv(self.filepath, usecols=['Class ID', 'Parents', 'Preferred Label'])
+
         # 2.Create dictionary of URI and ClassLabel
         labels_tmp = foodon[["Class ID", "Preferred Label"]].copy()
-
+        # labels_tmp = self.edit_label(labels_tmp)
         self.labels = labels_tmp.set_index('Class ID')['Preferred Label'].to_dict()
+
         # 3.Create data frame with columns - child and all its' parents
         foodonOrigDF = (foodon[["Class ID", "Parents"]].copy()).rename(columns={'Class ID': 'Child'})
+
         # 4.Split above DF into pairs of Child-Parent
         pairs = []
-        for index, row in foodonOrigDF.iterrows():
+        for _, row in foodonOrigDF.iterrows():
             parents = str(row['Parents'])
             parentList = parents.split("|")
             for pClass in parentList:
                 child = str(row['Child'])
                 pairs.append([child, pClass])
-        self.foodonDF = pd.DataFrame(pairs, columns=['Child', 'Parent'])
-        self.foodonDF = filter_ontology(self.foodonDF, 'http://purl.obolibrary.org/obo/FOODON_00001872')
-        self.foodonDF = get_subtree(self.foodonDF, 'http://purl.obolibrary.org/obo/FOODON_00001002')
+        foodonDF = pd.DataFrame(pairs, columns=['Child', 'Parent'])
+        foodonDF = self.filter_ontology(foodonDF, 'http://purl.obolibrary.org/obo/FOODON_00001872')
+        foodonDF = self.get_subtree(foodonDF, 'http://purl.obolibrary.org/obo/FOODON_00001002')
 
         # In foodonDF, replace URI by label
-        for idx, pair in self.foodonDF.iterrows():
+        for idx, pair in foodonDF.iterrows():
             pair['Child'] = self.labels[pair['Child']]
             if pair['Parent'] in self.labels:
                 pair['Parent'] = self.labels[pair['Parent']]
-        self.foodonDF.to_csv(self.outputFoodOn, sep='\t', index=False)
 
-        log.info('Parsed FoodON Ontology file.\n')
+        foodonDF.drop_duplicates(inplace=True, ignore_index=True)
+        foodonDF.to_csv(self.outputFoodOn, sep='\t', index=False)
 
+        return foodonDF
 
-    def get_parent_classes(self):
-        parentList = list(self.foodonDF['Parent'])
-        parentNP = np.array(parentList)
-        parentUnique = np.unique(parentNP)
-        return(list(parentUnique))
+    def edit_label(self, labels_tmp):
+        for idx, row in labels_tmp.iterrows():
+            label = row['Preferred Label']
+            if not('foodon' in label):
+                label_replaced = label.replace('food product', '')
+                label_replaced = label_replaced.replace(' food ', '')
+                label_replaced = label_replaced.replace('food ', ' ')
+                label_replaced = label_replaced.replace(' food', ' ')
+                label_replaced = label_replaced.replace(' products ', ' ')
+                label_replaced = label_replaced.replace('products ', ' ')
+                label_replaced = label_replaced.replace(' products', ' ')
+                label_replaced = label_replaced.replace(' product ', ' ')
+                label_replaced = label_replaced.replace('product ', ' ')
+                label_replaced = label_replaced.replace(' product', ' ')
 
-    def get_classes(self, merge_min_count=2):
+                row['Preferred Label'] = label_replaced
+        return(labels_tmp)
+
+    def filter_ontology(self, dfObj, classname):
+        # Remove class and its children from the ontology.
+        # Works only if the children are leaf nodes.
+        indexNames = dfObj[dfObj['Parent'] == classname].index
+        dfObj.drop(indexNames, inplace=True)
+        indexNames = dfObj[dfObj['Child'] == classname].index
+        dfObj.drop(indexNames, inplace=True)
+
+        return dfObj
+
+    def get_subtree(self, df, rootclass):
+        subtreeDF, nextlevelclasses = self.traverse_next_level(
+            df, ['http://purl.obolibrary.org/obo/FOODON_00001002'])
+
+        while(len(nextlevelclasses) > 0):
+            pairsDF, nextlevelclasses = self.traverse_next_level(df, nextlevelclasses)
+            subtreeDF = pd.concat([subtreeDF, pairsDF], ignore_index=True)
+
+        return subtreeDF
+
+    def traverse_next_level(self, df, classnames):
+        nextlevel = []
+        subtree_pairs = []
+        for parent in classnames:
+            selectedPairs = df[df['Parent'] == parent]
+            for idex, pair in selectedPairs.iterrows():
+                subtree_pairs.append([pair['Child'], pair['Parent']])
+                ifparent = df[df['Parent'] == pair['Child']]  # Check if it is a leaf node
+                if ifparent.empty != True:
+                    nextlevel.append(pair['Child'])
+
+        subtreeDF = pd.DataFrame(subtree_pairs, columns=['Child', 'Parent'])
+
+        return(subtreeDF, nextlevel)
+
+    def get_all_classes_dict(self):
         """
         Get all candidate classes.
         """
+        log.info('Generating dictionary of all classes.')
 
-        # Check for previously saved pickle file
-        ret_val = load_pkl(self.fullontology_pkl)
-        if ret_val != 0:  # Pickle file exists
-            if self.overwrite_pkl != 1:  # Do not create a new pickle file
-                return(ret_val)
+        if file_exists(self.full_ontology_pkl) and not self.overwrite_pkl:
+            log.info('Using pre-generated full classes dictionary file.')
+            return load_pkl(self.full_ontology_pkl)
 
-        print('Creating FoodON ground truth Ontology Structure\n')
-        # Get candidate classes (Will be used to build the Skeleton version of FoodON)
-        uniqueCandidates = get_candidate_classes(self.foodonDF)
-        # Create a dictionary version -> child:all parents
-        childparentdict = {k: g["Parent"].tolist() for k, g in self.foodonDF.groupby("Child")}
+        full_classes_dict = {}
+        for class_label in self.all_classes:
+            pd_match = self.pd_foodon_pairs[self.pd_foodon_pairs['Parent'] == class_label]
+            children = pd_match['Child'].tolist()
+            children_entities = [c for c in children if c in self.all_entities]
 
-        # Merging-up
-        # foodonDF = merge_up(foodonDF)
-        # uniqueCandidates = get_candidate_classes(foodonDF)
+            node_from = self.graph_dict['foodon product type']
+            node_to = self.graph_dict[class_label]
 
-        # Creating the Skeleton verion of FoodON
-        end = self.labels['http://purl.obolibrary.org/obo/FOODON_00001002']
-        candidate_dict = {}
-        for c in uniqueCandidates:
-            paths = find_all_paths(childparentdict, c, end)
-            paths_as_list_of_tuples = []
-            if paths != []:
-                for p in paths:
-                    paths_as_list_of_tuples.append(tuple(p))
-                children = []
-                childrenrows = self.foodonDF.loc[self.foodonDF['Parent'] == c]
-                for index, row in childrenrows.iterrows():
-                    child = row['Child']
-                    children = children + [child]
-                    uniquechildren = list(np.unique(np.array(children)))
-                # Create new tuple with heirachypaths and children
-                #  key = candidate , Value = tuple.
-                value_tuple = (paths_as_list_of_tuples, uniquechildren)
-                candidate_dict[c] = value_tuple
-        save_pkl(candidate_dict, self.fullontology_pkl)
-
-        return candidate_dict
-
-    def get_seeded_skeleton(self, candidate_dict, seed_count=2):
-
-        ret_val = load_pkl(self.skeleton_and_entities_pkl)
-        if ret_val != 0:
-            return(ret_val)
-
-        entities_to_populate = []
-        all_parents = self.get_parent_classes()
-
-        for cd in candidate_dict.keys():
-            value = candidate_dict[cd]
-            paths = value[0]
-            children = value[1]
-            # entities = list(set(children) - set(key_list))
-            entities = children
-            if len(entities) > seed_count:
-                seeds = random.choices(entities, k=seed_count)
+            paths = []
+            if class_label == 'foodon product type':
+                paths.append(tuple(['foodon product type']))
             else:
-                seeds = [random.choice(entities)]
-            remaining_entities = list(set(entities) - set(seeds))
-            remaining_entities = list(set(remaining_entities) - set(all_parents))
-            update_value = (paths, seeds)
-            candidate_dict[cd] = update_value
-            entities_to_populate = entities_to_populate + remaining_entities
+                for path in nx.all_simple_paths(self.foodon_graph, source=node_from, target=node_to):
+                    translated_path = [self.graph_dict_flip[p] for p in path]
+                    paths.append(tuple(translated_path[::-1]))
 
-        return_tuple = (candidate_dict, set(entities_to_populate))
-        save_pkl(return_tuple, self.skeleton_and_entities_pkl)
-        return return_tuple
+            full_classes_dict[class_label] = (paths, children_entities)
+
+        save_pkl(full_classes_dict, self.full_ontology_pkl)
+
+        return full_classes_dict
+
+    def get_candidate_classes(self):
+        """
+        Get all candidate classes.
+        """
+        log.info('Generating dictionary of candidate classes.')
+
+        if file_exists(self.candidate_ontology_pkl) and not self.overwrite_pkl:
+            log.info('Using pre-generated candidate classes dictionary file.')
+            return load_pkl(self.candidate_ontology_pkl)
+
+        candidate_classes_dict = {}
+        for class_label in self.all_classes:
+            pd_match = self.pd_foodon_pairs[self.pd_foodon_pairs['Parent'] == class_label]
+            children = pd_match['Child'].tolist()
+            children_entities = [c for c in children if c in self.all_entities]
+
+            if len(children_entities) > 0:
+                node_from = self.graph_dict['foodon product type']
+                node_to = self.graph_dict[class_label]
+
+                paths = []
+                if class_label == 'foodon product type':
+                    paths.append(tuple(['foodon product type']))
+                else:
+                    for path in nx.all_simple_paths(self.foodon_graph, source=node_from, target=node_to):
+                        translated_path = [self.graph_dict_flip[p] for p in path]
+                        paths.append(tuple(translated_path[::-1]))
+
+                candidate_classes_dict[class_label] = (paths, children_entities)
+
+        log.info('Found %d candidate classes out of %d all classes.',
+                 len(candidate_classes_dict.keys()), len(self.all_classes))
+
+        save_pkl(candidate_classes_dict, self.candidate_ontology_pkl)
+
+        return candidate_classes_dict
+
+    def get_seeded_skeleton(self, candidate_classes_dict, seed_count=2, min_seed_count=1):
+        log.info('Generating dictionary of skeleton candidate classes.')
+
+        if file_exists(self.skeleton_and_entities_pkl) and not self.overwrite_pkl:
+            log.info('Using pickled skeleton file.')
+            return load_pkl(self.skeleton_and_entities_pkl)
+
+        skeleton_candidate_classes_dict = {}
+        candidate_entities = []
+        for candidate_class in candidate_classes_dict.keys():
+            entities = candidate_classes_dict[candidate_class][1]
+
+            if len(entities) <= min_seed_count:
+                seeds = entities.copy()
+            elif len(entities) > min_seed_count and len(entities) <= seed_count:
+                seeds = random.sample(entities, min_seed_count)
+                candidate_entities.extend(list(set(entities) - set(seeds)))
+            else:
+                seeds = random.sample(entities, seed_count)
+                candidate_entities.extend(list(set(entities) - set(seeds)))
+
+            skeleton_candidate_classes_dict[candidate_class] = (
+                candidate_classes_dict[candidate_class][0],
+                seeds)
+
+        candidate_entities = list(set(candidate_entities))
+        candidate_entities.sort()
+
+        log.info('Found %d candidate entities to populate out of %d all entities.',
+                 len(candidate_entities), len(self.all_entities))
+
+        return_value = (skeleton_candidate_classes_dict, candidate_entities)
+        save_pkl(return_value, self.skeleton_and_entities_pkl)
+
+        return return_value
 
 
 if __name__ == '__main__':
-    parse_foodon = ParseFoodOn('../config/foodon_parse.ini')
+    # set log, parse args, and read configuration
+    set_logging()
 
-    class_list = parse_foodon.get_classes()
-    # ret_val = parse_foodon.get_seeded_skeleton(class_list)
-    print('End of code')
+    # parse FoodOn
+    parse_foodon = ParseFoodOn('../config/foodon_parse.ini')
+    all_classes_dict = parse_foodon.get_all_classes_dict()
+    candidate_classes_dict = parse_foodon.get_candidate_classes()
+    (skeleton_candidate_classes_dict, candidate_entities) = parse_foodon.get_seeded_skeleton(
+        candidate_classes_dict)
