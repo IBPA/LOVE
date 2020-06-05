@@ -48,6 +48,9 @@ class ParseFoodOn:
         self.overwrite_pkl = self.configparser.getbool('overwrite_pickle_flag')
         self.outputFoodOn = self.configparser.getstr('outputFoodOn')
 
+        self.num_seeds = self.configparser.getint('num_seeds')
+        self.num_min_extracted_entities = self.configparser.getint('num_min_extracted_entities')
+
         # generate pairs from csv file
         self.pd_foodon_pairs = self.generate_pairs()
         self.all_classes, self.all_entities = self.get_classes_and_entities()
@@ -93,7 +96,6 @@ class ParseFoodOn:
 
         # 2.Create dictionary of URI and ClassLabel
         labels_tmp = foodon[["Class ID", "Preferred Label"]].copy()
-        # labels_tmp = self.edit_label(labels_tmp)
         self.labels = labels_tmp.set_index('Class ID')['Preferred Label'].to_dict()
 
         # 3.Create data frame with columns - child and all its' parents
@@ -121,24 +123,6 @@ class ParseFoodOn:
         foodonDF.to_csv(self.outputFoodOn, sep='\t', index=False)
 
         return foodonDF
-
-    def edit_label(self, labels_tmp):
-        for idx, row in labels_tmp.iterrows():
-            label = row['Preferred Label']
-            if not('foodon' in label):
-                label_replaced = label.replace('food product', '')
-                label_replaced = label_replaced.replace(' food ', '')
-                label_replaced = label_replaced.replace('food ', ' ')
-                label_replaced = label_replaced.replace(' food', ' ')
-                label_replaced = label_replaced.replace(' products ', ' ')
-                label_replaced = label_replaced.replace('products ', ' ')
-                label_replaced = label_replaced.replace(' products', ' ')
-                label_replaced = label_replaced.replace(' product ', ' ')
-                label_replaced = label_replaced.replace('product ', ' ')
-                label_replaced = label_replaced.replace(' product', ' ')
-
-                row['Preferred Label'] = label_replaced
-        return(labels_tmp)
 
     def filter_ontology(self, dfObj, classname):
         # Remove class and its children from the ontology.
@@ -215,7 +199,8 @@ class ParseFoodOn:
         log.info('Generating dictionary of candidate classes.')
 
         if file_exists(self.candidate_ontology_pkl) and not self.overwrite_pkl:
-            log.info('Using pre-generated candidate classes dictionary file.')
+            log.info('Using pre-generated candidate classes dictionary file: %s',
+                     self.candidate_ontology_pkl)
             return load_pkl(self.candidate_ontology_pkl)
 
         candidate_classes_dict = {}
@@ -245,11 +230,11 @@ class ParseFoodOn:
 
         return candidate_classes_dict
 
-    def get_seeded_skeleton(self, candidate_classes_dict, seed_count=2, min_seed_count=1):
+    def get_seeded_skeleton(self, candidate_classes_dict):
         log.info('Generating dictionary of skeleton candidate classes.')
 
         if file_exists(self.skeleton_and_entities_pkl) and not self.overwrite_pkl:
-            log.info('Using pickled skeleton file.')
+            log.info('Using pickled skeleton file: %s', self.skeleton_and_entities_pkl)
             return load_pkl(self.skeleton_and_entities_pkl)
 
         skeleton_candidate_classes_dict = {}
@@ -257,13 +242,16 @@ class ParseFoodOn:
         for candidate_class in candidate_classes_dict.keys():
             entities = candidate_classes_dict[candidate_class][1]
 
-            if len(entities) <= min_seed_count:
-                seeds = entities.copy()
-            elif len(entities) > min_seed_count and len(entities) <= seed_count:
-                seeds = random.sample(entities, min_seed_count)
-                candidate_entities.extend(list(set(entities) - set(seeds)))
+            if len(entities) <= self.num_seeds:
+                temp_num_seeds = len(entities) - self.num_min_extracted_entities
+
+                if temp_num_seeds > 0:
+                    seeds = random.sample(entities, temp_num_seeds)
+                    candidate_entities.extend(list(set(entities) - set(seeds)))
+                else:
+                    seeds = entities.copy()
             else:
-                seeds = random.sample(entities, seed_count)
+                seeds = random.sample(entities, self.num_seeds)
                 candidate_entities.extend(list(set(entities) - set(seeds)))
 
             skeleton_candidate_classes_dict[candidate_class] = (

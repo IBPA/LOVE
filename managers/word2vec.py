@@ -54,6 +54,7 @@ class EpochCallback(CallbackAny2Vec):
     # def on_train_end(self, model):
     #     print("Ending training")
 
+
 class Word2VecManager():
     """
     """

@@ -8,7 +8,6 @@ Description:
 To-do:
 """
 # standard imports
-import logging as log
 import os
 import sys
 
@@ -25,9 +24,10 @@ class AnalyzeOntology:
         gt_ontology_filename = configparser.getstr('gt_entitymapping')
         self.gt_ontology = load_pkl(gt_ontology_filename)
 
-    def get_stats(self, predictedDF, allow_distance=0):
+    def get_stats(self, predictedDF, allow_distance=0, match_only=None):
         TP = 0
         FP = 0
+        tp_list = []
         fp_list = []
         distance_distribution = []
 
@@ -38,8 +38,11 @@ class AnalyzeOntology:
                 if pair['Child'] in value[1]:
                     gt_classes.append(key)
 
+            if match_only:
+                if any(gt_class not in match_only for gt_class in gt_classes):
+                    continue
+
             distance_list = []
-            # common_ancestor_list = []
             for gt_class in gt_classes:
                 predicted_paths = [path[::-1] for path in self.gt_ontology[predicted_class][0]]
                 gt_paths = [path[::-1] for path in self.gt_ontology[gt_class][0]]
@@ -49,22 +52,18 @@ class AnalyzeOntology:
                         common_path = set(pred_path).intersection(gt_path)
                         common_path = [c for c in gt_path if c in common_path]
 
-                        distance = len(pred_path) + len(gt_path) - 2*len(common_path)
-                        # common_ancestor = common_path[-1]
-
+                        distance = len(pred_path) + len(gt_path) - 2 * len(common_path)
                         distance_list.append(distance)
-                        # common_ancestor_list.append(common_ancestor)
 
             idx_shortest = distance_list.index(min(distance_list))
             shortest_distance = distance_list[idx_shortest]
-            # shortest_common_ancestor = common_ancestor_list[idx_shortest]
             distance_distribution.append(shortest_distance)
 
             if shortest_distance <= allow_distance:
                 TP += 1
+                tp_list.append((gt_classes, pair['Parent'], pair['Child']))
             else:
                 FP += 1
-                fp_list.append((pair['Parent'], pair['Child']))
+                fp_list.append((gt_classes, pair['Parent'], pair['Child']))
 
-        return (TP, FP, fp_list, distance_distribution)
-
+        return (TP, FP, tp_list, fp_list, distance_distribution)

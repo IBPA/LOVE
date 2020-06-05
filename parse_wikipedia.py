@@ -59,20 +59,17 @@ def main():
     pd_foodon_pairs = pd.read_csv('./data/FoodOn/foodonpairs.txt', sep='\t')
     labels.extend(pd_foodon_pairs['Parent'].tolist())
     labels.extend(pd_foodon_pairs['Child'].tolist())
+    labels = list(set(labels))
 
-    vocabs = []
-    for label in labels:
-        vocabs.extend(label.lower().split())
-    vocabs = fpm.preprocess_column(pd.Series(list(set(vocabs))), load_model=True).tolist()
-    vocabs = [vocab for vocab in vocabs if vocab != '']
-    queries = []
-    for vocab in vocabs:
-        if len(vocab.split()) != 1:
-            queries.extend(vocab.split())
-            queries.append(vocab)
-        else:
-            queries.append(vocab)
+    log.info('Number of unique labels: %d', len(labels))
+
+    processed_labels = fpm.preprocess_column(pd.Series(labels), load_model=True).tolist()
+    queries = processed_labels.copy()
+    for processed_label in processed_labels:
+        queries.extend(processed_label.split())
     queries = list(set(queries))
+
+    log.info('Number of queries: %d', len(queries))
 
     # get summaries of the wikipedia entry
     wm = WikipediaManager()

@@ -15,6 +15,7 @@ from time import time
 import multiprocessing
 import itertools
 import math
+import random
 
 sys.path.insert(0, os.path.dirname(__file__))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
@@ -23,7 +24,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 import numpy as np
 import pandas as pd
 from gensim.models import KeyedVectors
-# import textdistance
+import textdistance
+import nltk
 
 # local imports
 from fdc_preprocess import FdcPreprocessManager
@@ -39,7 +41,6 @@ class ScoringManager:
             self,
             candidate_classes_info,
             candidate_entities,
-            preprocess_config,
             scoring_config):
         """
         Class initializer.
@@ -49,13 +50,8 @@ class ScoringManager:
             scoring_config = ConfigParser(scoring_config)
 
         # save arguments
-        self.keyed_vectors = KeyedVectors.load_word2vec_format(
-            scoring_config.getstr('word_embeddings'))
-        self.keyed_vectors.init_sims(replace=True)
-
         self.candidate_classes_info = candidate_classes_info
         self.candidate_entities = candidate_entities
-        self.fpm = FdcPreprocessManager(preprocess_config)
 
         # parse config file
         self.alpha = scoring_config.getfloat('alpha')
@@ -64,6 +60,8 @@ class ScoringManager:
         self.initial_parents_scores = scoring_config.getstr('initial_parents_scores')
         self.pairs_filepath = scoring_config.getstr('pairs_filepath')
         self.populated_filepath = scoring_config.getstr('populated_filepath')
+        self.preprocess_config_filepath = scoring_config.getstr('preprocess_config')
+        self.similarity_method = scoring_config.getstr('similarity_method')
 
         log.debug('alpha: %f', self.alpha)
         log.debug('num_mapping_per_iteration: %d', self.num_mapping_per_iteration)
@@ -71,6 +69,10 @@ class ScoringManager:
         log.debug('initial_parents_scores: %s', self.initial_parents_scores)
         log.debug('pairs_filepath: %s', self.pairs_filepath)
         log.debug('populated_filepath: %s', self.populated_filepath)
+        log.debug('similarity_method: %s', self.similarity_method)
+
+        # preprocess manager
+        self.fpm = FdcPreprocessManager(self.preprocess_config_filepath)
 
         # number of candidate classes & entities
         self.num_candidate_classes = len(self.candidate_classes_info)
@@ -93,14 +95,21 @@ class ScoringManager:
         self.all_class_labels = list(set(self.candidate_classes_label + other_classes))
 
         # calculate embedding lookup table for class / entity labels
-        self.pd_class_label_embeddings = self._calculate_label_embeddings(self.all_class_labels)
-        self.pd_entity_label_embeddings = self._calculate_label_embeddings(self.all_entity_labels)
+        if 'we_' in self.similarity_method:
+            self.keyed_vectors = KeyedVectors.load_word2vec_format(
+                scoring_config.getstr('word_embeddings'))
+            # self.keyed_vectors.save('./output/glove_wiki_embeddings.bin')
+            # self.keyed_vectors = KeyedVectors.load('./output/glove_wiki_embeddings.bin')
 
-        # save_pkl(self.pd_class_label_embeddings, './output/class_label_embeddings.pkl')
-        # save_pkl(self.pd_entity_label_embeddings, './output/entity_label_embeddings.pkl')
+            self.pd_class_label_embeddings = self._calculate_label_embeddings(self.all_class_labels)
+            self.pd_entity_label_embeddings = self._calculate_label_embeddings(self.all_entity_labels)
 
-        # self.pd_class_label_embeddings = load_pkl('./output/class_label_embeddings.pkl')
-        # self.pd_entity_label_embeddings = load_pkl('./output/entity_label_embeddings.pkl')
+            # save_pkl(self.pd_class_label_embeddings, './output/pd_class_label_embeddings.pkl')
+            # save_pkl(self.pd_entity_label_embeddings, './output/pd_entity_label_embeddings.pkl')
+            # sys.exit()
+
+            # self.pd_class_label_embeddings = load_pkl('./output/pd_class_label_embeddings.pkl')
+            # self.pd_entity_label_embeddings = load_pkl('./output/pd_entity_label_embeddings.pkl')
 
         # do initial calculation of the scores
         self.pd_siblings_scores, self.pd_parents_scores = self._calculate_initial_scores()
@@ -118,26 +127,43 @@ class ScoringManager:
             similarity = np.dot(array1, array2) / (np.linalg.norm(array1) * np.linalg.norm(array2))
 
         if np.isnan(similarity):
-            similarity = 0
+            similarity = -1
 
         return similarity
 
+    @staticmethod
+    def _euclidean_similarity(array1, array2):
+        distance = np.linalg.norm(array1-array2)
+        if distance == 0:
+            return np.inf
+        else:
+            return (1 / distance)
+
     def _caculate_embeddings(self, label):
-        embedding = 0
+        label_embedding = 0
         num_found_words = 0
 
-        for word in label.split(' '):
+        for word, pos in nltk.pos_tag(label.split(' ')):
+            # if word in ['food', 'product']:
+            #     continue
+
             try:
-                embedding += self.keyed_vectors.wv.word_vec(word)
-                num_found_words += 1
+                word_embedding = self.keyed_vectors.wv.word_vec(word)
             except KeyError:
-                # log.warning('Coult not find word vector: %s', word)
                 pass
+            else:
+                if pos == 'NN':
+                    multiplier = 1.15
+                else:
+                    multiplier = 1
+
+                label_embedding += (multiplier * word_embedding)
+                num_found_words += 1
 
         if num_found_words == 0:
             return np.zeros(300)
         else:
-            return embedding / num_found_words
+            return label_embedding / num_found_words
 
     def _calculate_label_embeddings(self, index_list):
         pd_label_embeddings = pd.DataFrame(
@@ -148,6 +174,11 @@ class ScoringManager:
             pd_label_embeddings.index.to_series(),
             load_model=True)
 
+        # some preprocessed columns are empty due to lemmatiazation, fill it up with original
+        empty_index = (pd_label_embeddings['preprocessed'] == '')
+        pd_label_embeddings.loc[empty_index, 'preprocessed'] = pd_label_embeddings.index.to_series()[empty_index]
+        pd_label_embeddings.loc[empty_index, 'preprocessed'] = pd_label_embeddings.loc[empty_index, 'preprocessed'].apply(lambda x: x.lower())
+
         pd_label_embeddings['vector'] = pd_label_embeddings['preprocessed'].apply(
             self._caculate_embeddings)
 
@@ -157,61 +188,102 @@ class ScoringManager:
         class_label, entity_label = pair[0], pair[1]
         siblings = self.candidate_classes_info[class_label][1]
 
-        # similarity = 0
-        # for sibling in siblings:
-        #     similarity += textdistance.lcsseq.normalized_similarity(sibling, entity_label)
-        # similarity /= len(siblings)
+        if self.similarity_method == 'we_cos':
+            num_nonzero_siblings = 0
+            siblings_embedding = 0
 
-        # return similarity
+            for sibling in siblings:
+                sibling_embedding = self.pd_entity_label_embeddings.loc[sibling, 'vector']
 
-        num_nonzero_siblings = 0
-        siblings_embedding = 0
+                if np.count_nonzero(sibling_embedding):
+                    siblings_embedding += sibling_embedding
+                    num_nonzero_siblings += 1
 
-        for sibling in siblings:
-            sibling_embedding = self.pd_entity_label_embeddings.loc[sibling, 'vector']
+            if num_nonzero_siblings == 0:
+                return 0
 
-            if np.count_nonzero(sibling_embedding):
-                siblings_embedding += sibling_embedding
-                num_nonzero_siblings += 1
+            siblings_embedding /= num_nonzero_siblings
+            entity_embeddings = self.pd_entity_label_embeddings.loc[entity_label, 'vector']
 
-        if num_nonzero_siblings == 0:
-            return 0
+            score = self._cosine_similarity(siblings_embedding, entity_embeddings)
+        elif self.similarity_method == 'we_euc':
+            num_nonzero_siblings = 0
+            siblings_embedding = 0
 
-        siblings_embedding /= num_nonzero_siblings
-        entity_embeddings = self.pd_entity_label_embeddings.loc[entity_label, 'vector']
+            for sibling in siblings:
+                sibling_embedding = self.pd_entity_label_embeddings.loc[sibling, 'vector']
 
-        score = self._cosine_similarity(siblings_embedding, entity_embeddings)
+                if np.count_nonzero(sibling_embedding):
+                    siblings_embedding += sibling_embedding
+                    num_nonzero_siblings += 1
+
+            if num_nonzero_siblings == 0:
+                return 0
+
+            siblings_embedding /= num_nonzero_siblings
+            entity_embeddings = self.pd_entity_label_embeddings.loc[entity_label, 'vector']
+
+            score = self._euclidean_similarity(siblings_embedding, entity_embeddings)
+        elif self.similarity_method == 'hamming':
+            score = 0
+            for sibling in siblings:
+                score += textdistance.hamming.normalized_similarity(sibling, entity_label)
+            score /= len(siblings)
+        elif self.similarity_method == 'jaccard':
+            score = 0
+            for sibling in siblings:
+                score += textdistance.jaccard.normalized_similarity(sibling, entity_label)
+            score /= len(siblings)
+        elif self.similarity_method == 'lcsseq':
+            score = 0
+            for sibling in siblings:
+                score += textdistance.lcsseq.normalized_similarity(sibling, entity_label)
+            score /= len(siblings)
+        elif self.similarity_method == 'random':
+            score = random.uniform(0, 1)
+        else:
+            raise ValueError('Invalid similarity method: %s', self.similarity_method)
 
         return score
 
     def _calculate_parents_score(self, pair):
         class_label, entity_label = pair[0], pair[1]
-        # return textdistance.lcsseq.normalized_similarity(class_label, entity_label)
 
-        entity_embeddings = self.pd_entity_label_embeddings.loc[entity_label, 'vector']
-        class_embeddings = self.pd_class_label_embeddings.loc[class_label, 'vector']
-
-        score = self._cosine_similarity(class_embeddings, entity_embeddings)
+        if self.similarity_method == 'we_cos':
+            entity_embeddings = self.pd_entity_label_embeddings.loc[entity_label, 'vector']
+            class_embeddings = self.pd_class_label_embeddings.loc[class_label, 'vector']
+            score = self._cosine_similarity(class_embeddings, entity_embeddings)
+        elif self.similarity_method == 'we_euc':
+            entity_embeddings = self.pd_entity_label_embeddings.loc[entity_label, 'vector']
+            class_embeddings = self.pd_class_label_embeddings.loc[class_label, 'vector']
+            score = self._euclidean_similarity(class_embeddings, entity_embeddings)
+        elif self.similarity_method == 'hamming':
+            score = textdistance.hamming.normalized_similarity(class_label, entity_label)
+        elif self.similarity_method == 'jaccard':
+            score = textdistance.jaccard.normalized_similarity(class_label, entity_label)
+        elif self.similarity_method == 'lcsseq':
+            score = textdistance.lcsseq.normalized_similarity(class_label, entity_label)
+        elif self.similarity_method == 'random':
+            score = random.uniform(0, 1)
+        else:
+            raise ValueError('Invalid similarity method: %s', self.similarity_method)
 
         return score
 
     def _calculate_initial_scores(self):
-        if file_exists(self.initial_siblings_scores) and file_exists(self.initial_parents_scores):
-            log.info('Pre-calculated scores found.')
+        # calculate siblings score
+        if file_exists(self.initial_siblings_scores):
+            log.info('Pre-calculated siblings scores found.')
             pd_siblings_scores = pd.read_csv(self.initial_siblings_scores, index_col=0)
-            pd_parents_scores = pd.read_csv(self.initial_parents_scores, index_col=0)
         else:
-            log.info('No pre-calculated scores found.')
-
             entity_class_pairs = list(itertools.product(
                 self.candidate_classes_label,
                 self.candidate_entities))
 
-            # calculate siblings score
             log.info('Calculating siblings score...')
 
             t1 = time()
-            with multiprocessing.Pool(processes=9, maxtasksperchild=1) as p:
+            with multiprocessing.Pool(processes=16, maxtasksperchild=1) as p:
                 results = p.map(self._calculate_siblings_score, entity_class_pairs)
             t2 = time()
 
@@ -227,11 +299,19 @@ class ScoringManager:
 
             pd_siblings_scores.to_csv(self.initial_siblings_scores)
 
-            # calculate parents score
+        # calculate parents score
+        if file_exists(self.initial_parents_scores):
+            log.info('Pre-calculated parents scores found.')
+            pd_parents_scores = pd.read_csv(self.initial_parents_scores, index_col=0)
+        else:
+            entity_class_pairs = list(itertools.product(
+                self.candidate_classes_label,
+                self.candidate_entities))
+
             log.info('Calculating parents score...')
 
             t1 = time()
-            with multiprocessing.Pool(processes=9, maxtasksperchild=1) as p:
+            with multiprocessing.Pool(processes=16, maxtasksperchild=1) as p:
                 results = p.map(self._calculate_parents_score, entity_class_pairs)
             t2 = time()
 
