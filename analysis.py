@@ -443,6 +443,28 @@ def calculate_precision(file):
     return (precision, file)
 
 
+def do_analysis(file):
+    population_pairs = load_pkl(file)
+    iterations = list(population_pairs.keys())
+    analyze_ontoloty = AnalyzeOntology('./config/analyze_ontology.ini')
+
+    pairs = []
+    for iteration in iterations:
+        pairs.extend(population_pairs[iteration])
+    pd_pairs = pd.DataFrame(pairs, columns=['Parent', 'Child'])
+    pd_pairs = pd_pairs[~pd_pairs['Parent'].isin(classes_without_embedding)]
+    pd_pairs = pd_pairs[~pd_pairs['Child'].isin(entities_without_embedding)]
+
+    tp, fp, tp_list, fp_list, distances = analyze_ontoloty.get_stats(
+        pd_pairs,
+        allow_distance=0,
+        match_only=None)
+
+    print(file, ': ', precision)
+
+    return (file, tp, fp, tp_list, fp_list, distances)
+
+
 def calculate_distance(file):
     population_pairs = load_pkl(file)
     iterations = list(population_pairs.keys())
@@ -1825,6 +1847,43 @@ def cheese_bean_wine_precision():
     # pd_prediction.to_csv('./output/all_prediction_result.csv', sep='\t', index=False)
 
 
+def tarini_analyze():
+    analyze_ontoloty = AnalyzeOntology('./config/analyze_ontology.ini')
+
+    ##########
+    # CASE 1 #
+    ##########
+    # if you want to run your test on 100 different skeletons to get
+    # distribution of precision, use the following command
+    files_list = ['./data/scores/wiki/pairs_{}.pkl'.format(i) for i in range(1, 101)]
+
+    # change processes=16 to yourn own computer settings
+    # if your computer has 8 threads, change it to 8
+    with multiprocessing.Pool(processes=16, maxtasksperchild=1) as p:
+        result = p.map(do_analysis, files_list)
+
+    pd_analysis_tarini = pd.DataFrame(
+        result,
+        columns=['Filename', 'num_TP', 'num_FP', 'TPs', 'FPs', 'Distances'])
+    pd_analysis_tarini.to_csv('./output/analysis_tarini.txt', sep='\t', index=False)
+
+
+    ##########
+    # CASE 2 #
+    ##########
+    # if you want to just run it on the best skeleton that had best precision
+    # run the following. skeleton #21 had the best result
+    result = do_analysis('./data/scores/wiki/pairs_21.pkl')
+    filename, num_TP, num_FP, TPs, FPs, distances = result
+
+    print(filename)
+    print(num_TP)
+    print(num_FP)
+    print(TPs)
+    print(FPs)
+    print(distances)
+
+
 def main():
     """
     Main function.
@@ -1834,8 +1893,8 @@ def main():
     # precision, filename = calculate_precision('./data/scores/wiki/pairs_5.pkl')
     # sys.exit()
 
-    alpha_list = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    num_mapping_list = [10000]
+    # alpha_list = [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+    # num_mapping_list = [10000]
 
     # # find best grid search result
     # find_best_grid_search_result(
@@ -1863,7 +1922,9 @@ def main():
 
     # visualize_foodon_bean()
 
-    cheese_bean_wine_precision()
+    # cheese_bean_wine_precision()
+
+    tarini_analyze()
 
 if __name__ == '__main__':
     main()
