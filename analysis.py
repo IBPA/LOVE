@@ -455,12 +455,20 @@ def do_analysis(file):
     pd_pairs = pd_pairs[~pd_pairs['Parent'].isin(classes_without_embedding)]
     pd_pairs = pd_pairs[~pd_pairs['Child'].isin(entities_without_embedding)]
 
+    # allow_distance controls what is the allowed distance for the prediction
+    # to be considered a true positive. Default is 0, meaning only the exact
+    # prediction is considered TP.
+
+    # You can speicy what ontology classes to consider for analysis.
+    # For example, if you want to find the analysis result of the
+    # class 'kefir food product', set match_only = ['kefir food product'].
+
     tp, fp, tp_list, fp_list, distances = analyze_ontoloty.get_stats(
         pd_pairs,
         allow_distance=0,
         match_only=None)
 
-    print(file, ': ', precision)
+    print('Processing file: ', file)
 
     return (file, tp, fp, tp_list, fp_list, distances)
 
