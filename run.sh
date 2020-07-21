@@ -6,10 +6,13 @@ set -e
 # variables
 root_dir=`pwd`
 
-# download data
-cd $root_dir/data/FDC
-./download_fdc.sh
+# Look up all the words found in the FDC data on WikiPedia.
+# Only the summary section of WikiPedia is downloaded.
+# The WikiPedia data is also preprocessed.
+python3 parse_wikipedia.py
 
-# run preprocessor
-cd $root_dir
-python3 preprocess_data.py
+# Train embeddings of the words from WikiPedia.
+python3 train_embeddings.py --config_file ./config/word2vec_wiki.ini
+
+# Do ontology population.
+python3 populate_foodon.py
