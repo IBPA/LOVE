@@ -15,6 +15,7 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
 # third party libraries
+import numpy as np
 import pandas as pd
 
 # local imports
@@ -119,23 +120,18 @@ class FdcDataManager:
             on='food_category_id',
             rsuffix='_food_category')
 
-        # # join (food_attribute, food_attribute_type)
-        # self.fdc_data_dic['food_attribute'] = self.fdc_data_dic['food_attribute'].fillna('')
-        # self.fdc_data_dic['food_attribute'] = self.fdc_data_dic['food_attribute'].groupby(
-        #     ['fdc_id', 'food_attribute_type_id'])['value'].agg(', '.join).reset_index()
+        # join nutrients
+        pd_food_nutrient = self.fdc_data_dic['food_nutrient']
+        pd_food_nutrient['amount'] = pd_food_nutrient['amount'].astype(np.float)
+        pd_food_nutrient = pd_food_nutrient.join(
+            self.fdc_data_dic['nutrient'].set_index('id'),
+            on='nutrient_id')
 
-        # pd_food_attribute_joined = self.fdc_data_dic['food_attribute'].join(
-        #     self.fdc_data_dic['food_attribute_type'].set_index('id'),
-        #     on='food_attribute_type_id')
+        nutrient_lookup = pd_food_nutrient.groupby('fdc_id')[['name', 'amount']].apply(
+            lambda x: x.set_index('name').to_dict()['amount']).to_dict()
 
-        # pd_food_attribute_joined = pd_food_attribute_joined.groupby(
-        #     ['fdc_id']).agg(', '.join).reset_index()
-
-        # # join (joined, food_attribute_joined)
-        # pd_joined = pd_joined.join(
-        #     pd_food_attribute_joined.set_index('fdc_id'),
-        #     on='fdc_id',
-        #     rsuffix='_food_attribute')
+        pd_joined['nutrients'] = pd_joined['fdc_id'].apply(
+            lambda x: nutrient_lookup[x] if x in nutrient_lookup else np.nan)
 
         # set fdc_id as index
         pd_joined['fdc_id'] = pd_joined['fdc_id'].astype(int)

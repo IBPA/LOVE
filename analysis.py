@@ -14,6 +14,10 @@ import multiprocessing
 from time import time
 import sys
 import random
+import os
+import ast
+import difflib
+from fuzzywuzzy import process
 
 # third party imports
 import matplotlib.pyplot as plt
@@ -23,6 +27,12 @@ import networkx as nx
 from networkx.drawing.nx_agraph import graphviz_layout
 import seaborn as sns
 from scipy.stats import ttest_rel, wilcoxon, ttest_ind, entropy
+from scipy.stats import pearsonr, spearmanr
+from scipy.sparse.linalg import svds
+from scipy.sparse import csc_matrix, csr_matrix
+from scipy.linalg import svd
+from sklearn.metrics.pairwise import cosine_similarity
+from scipy.stats import ranksums
 
 # local imports
 from managers.analyze_ontology import AnalyzeOntology
@@ -601,6 +611,13 @@ def distance_all_models():
     print(np.mean(pd_wiki_average_distance['Average Distance'].tolist()))
 
 
+    _, pval = ttest_rel(pd_random_average_distance['Average Distance'], pd_wiki_average_distance['Average Distance'])
+    print('random vs. wiki p-value: {}'.format(pval))
+
+    _, pval = ttest_rel(pd_hamming_average_distance['Average Distance'], pd_wiki_average_distance['Average Distance'])
+    print('hamming vs. wiki p-value: {}'.format(pval))
+
+
 def plot_precision_all_models():
     analyze_ontoloty = AnalyzeOntology('./config/analyze_ontology.ini')
 
@@ -760,21 +777,42 @@ def plot_precision_all_models():
     plt.axis([None, None, 0.08, 0.40])
     save_figure(fig, './output/different_models_precision.svg')
 
+    #
+    fig = plt.figure()
+
+    sns.set(style="whitegrid")
+
+    ax = sns.boxplot(
+        x='Similarity Method',
+        y='Precision',
+        data=pd_precision,
+        order=['Wiki', 'Wiki_Euclidean'])
+
+    ax = sns.swarmplot(
+        x='Similarity Method',
+        y='Precision',
+        data=pd_precision,
+        order=['Wiki', 'Wiki_Euclidean'])
+
+    # plt.axis([None, None, 0.08, 0.40])
+    save_figure(fig, './output/euclidean_cosine_precision.svg')
+
+
     # pairwise p-values
-    _, pval = ttest_rel(pd_random_precision['Precision'], pd_glove_wiki_precision['Precision'])
-    print('random vs. glove_wiki p-value: {}'.format(pval))
+    _, pval = ttest_rel(pd_random_precision['Precision'], pd_wiki_precision['Precision'])
+    print('random vs. wiki p-value: {}'.format(pval))
 
-    _, pval = ttest_rel(pd_jaccard_precision['Precision'], pd_glove_wiki_precision['Precision'])
-    print('jaccard vs. glove_wiki p-value: {}'.format(pval))
+    _, pval = ttest_rel(pd_jaccard_precision['Precision'], pd_wiki_precision['Precision'])
+    print('jaccard vs. wiki p-value: {}'.format(pval))
 
-    _, pval = ttest_rel(pd_hamming_precision['Precision'], pd_glove_wiki_precision['Precision'])
-    print('hamming vs. glove_wiki p-value: {}'.format(pval))
+    _, pval = ttest_rel(pd_hamming_precision['Precision'], pd_wiki_precision['Precision'])
+    print('hamming vs. wiki p-value: {}'.format(pval))
 
-    _, pval = ttest_rel(pd_glove_precision['Precision'], pd_glove_wiki_precision['Precision'])
-    print('glove vs. glove_wiki p-value: {}'.format(pval))
+    _, pval = ttest_rel(pd_glove_precision['Precision'], pd_wiki_precision['Precision'])
+    print('glove vs. wiki p-value: {}'.format(pval))
 
-    _, pval = ttest_rel(pd_wiki_precision['Precision'], pd_glove_wiki_precision['Precision'])
-    print('wiki vs. glove_wiki p-value: {}'.format(pval))
+    _, pval = ttest_rel(pd_wiki_precision['Precision'], pd_wiki_euclidean_precision['Precision'])
+    print('wiki vs. wiki_euclidean p-value: {}'.format(pval))
 
 
 def plot_precision_with_without_food_product():
@@ -1855,41 +1893,396 @@ def cheese_bean_wine_precision():
     # pd_prediction.to_csv('./output/all_prediction_result.csv', sep='\t', index=False)
 
 
-def tarini_analyze():
-    analyze_ontoloty = AnalyzeOntology('./config/analyze_ontology.ini')
+def artifacts():
+    pd_data = pd.read_csv('./data/FoodOn/artifacts.txt', sep='\t')
+    X = pd_data[['Cohesiveness', 'Granularity']]
+    y = pd_data[['Precision']]
 
-    ##########
-    # CASE 1 #
-    ##########
-    # if you want to run your test on 100 different skeletons to get
-    # distribution of precision, use the following command
-    files_list = ['./data/scores/wiki/pairs_{}.pkl'.format(i) for i in range(1, 101)]
+    plt.figure()
+    sns.heatmap(pd.concat([X, y], axis=1).corr(method='pearson'), cmap=plt.cm.bwr)
+    plt.title('Pairwise Correlation')
+    save_figure(plt.gcf(), './output/artifacts.svg')
 
-    # change processes=16 to yourn own computer settings
-    # if your computer has 8 threads, change it to 8
-    with multiprocessing.Pool(processes=16, maxtasksperchild=1) as p:
-        result = p.map(do_analysis, files_list)
+    # pearson
+    pearson_result = [pearsonr(X[feature], y['Precision']) for feature in list(X)]
 
-    pd_analysis_tarini = pd.DataFrame(
-        result,
-        columns=['Filename', 'num_TP', 'num_FP', 'TPs', 'FPs', 'Distances'])
-    pd_analysis_tarini.to_csv('./output/analysis_tarini.txt', sep='\t', index=False)
+    scores = list(zip(*pearson_result))[0]
+    scores_abs = [abs(s) for s in scores]
+    pvalues = list(zip(*pearson_result))[1]
+
+    indices = np.argsort(scores_abs)[::-1]
+    ranking = [list(X)[idx] for idx in indices]
+
+    print('Pearson pairwise feature correlation ranking:')
+    for f in range(X.shape[1]):
+        print('{}. {}: {} ({})'.format(f+1, ranking[f], scores[indices[f]], pvalues[indices[f]]))
+
+    print(pearsonr(X['Cohesiveness'], X['Granularity']))
+
+    # # spearman
+    # spearman_result = [spearmanr(X[feature], y['Precision']) for feature in list(X)]
+
+    # scores = list(zip(*spearman_result))[0]
+    # scores_abs = [abs(s) for s in scores]
+    # pvalues = list(zip(*spearman_result))[1]
+
+    # indices = np.argsort(scores_abs)[::-1]
+    # ranking = [list(X)[idx] for idx in indices]
+
+    # print('Spearman Pairwise feature correlation ranking:')
+    # for f in range(X.shape[1]):
+    #     print('{}. {}: {} ({})'.format(f+1, ranking[f], scores[indices[f]], pvalues[indices[f]]))
+
+    # print(spearmanr(X['Cohesiveness'], X['Granularity']))
 
 
-    ##########
-    # CASE 2 #
-    ##########
-    # if you want to just run it on the best skeleton that had best precision
-    # run the following. skeleton #21 had the best result
-    result = do_analysis('./data/scores/wiki/pairs_21.pkl')
-    filename, num_TP, num_FP, TPs, FPs, distances = result
+def _fuzzy_search(entity):
+    result = process.extract(entity[1], entity[0], limit=1)
+    return (entity[1], result[0])
 
-    print(filename)
-    print(num_TP)
-    print(num_FP)
-    print(TPs)
-    print(FPs)
-    print(distances)
+
+def nutrient():
+    # pd_fdc = pd.read_csv('./output/final_fdc.txt', sep='\t')
+    # pd_fdc.dropna(subset=['nutrients'], inplace=True)
+    # pd_fdc['nutrients'] = pd_fdc['nutrients'].apply(lambda x: ast.literal_eval(x))
+    # descriptions = pd_fdc['description'].tolist()
+
+    # # keyword = 'cheddar cheese'
+    # # print(keyword)
+    # # temp = process.extract(keyword, descriptions, limit=5)
+    # # print(temp)
+
+    # # gt ontology
+    # gt_ontology = load_pkl('./data/FoodOn/candidate_classes_dict.pkl')
+    # entities = [item for k, v in gt_ontology.items() for item in v[1] ]
+    # entities = list(set(entities))
+
+    # entities = entities[0:16]
+    # entities = [(descriptions, entity) for entity in entities]
+    # t1 = time()
+    # with multiprocessing.Pool(processes=16, maxtasksperchild=1) as p:
+    #     result = p.map(_fuzzy_search, entities)
+    # t2 = time()
+    # print(t2-t1)
+
+    # pd_result = pd.DataFrame(result, columns=['FoodOn food entity', 'FDC best match'])
+    # pd_result['Score'] = pd_result['FDC best match'].apply(lambda x: x[1])
+    # pd_result.to_csv('./output/foodon_fdc_search.txt', sep='\t', index=False)
+
+    # pd_result = pd.read_csv('./output/foodon_fdc_search.txt', sep='\t')
+    # pd_high = pd_result[pd_result['Score'] >= 95]
+    # pd_high['FDC best match'] = pd_high['FDC best match'].apply(lambda x: ast.literal_eval(x))
+
+    # def _get_nutrient(keyword):
+    #     pd_subset = pd_fdc[pd_fdc['description'] == keyword[0]]
+    #     nutrients = pd_subset['nutrients'].tolist()
+    #     return nutrients[0]
+
+    # def _get_matching_count(keyword):
+    #     pd_subset = pd_fdc[pd_fdc['description'] == keyword[0]]
+    #     nutrients = pd_subset['nutrients'].tolist()
+    #     return len(nutrients)
+
+    # pd_high['nutrient'] = pd_high['FDC best match'].apply(lambda x: _get_nutrient(x))
+    # pd_high['matching count'] = pd_high['FDC best match'].apply(lambda x: _get_matching_count(x))
+    # pd_high.to_csv('./output/foodon_fdc_nutrients.txt', sep='\t', index=False)
+
+    pd_high = pd.read_csv('./output/foodon_fdc_nutrients.txt', sep='\t')
+    pd_high['nutrient'] = pd_high['nutrient'].apply(lambda x: ast.literal_eval(x))
+    pd_high['FDC best match'] = pd_high['FDC best match'].apply(lambda x: ast.literal_eval(x))
+    print(pd_high.head())
+    print(pd_high.shape)
+    print()
+
+    # nutrients = pd_high['nutrient'].tolist()
+    # nutrients = [key for nutrient in nutrients for key, _ in nutrient.items()]
+    # nutrients = list(set(nutrients))
+
+    # nutrient_coverage = []
+    # for nutrient in nutrients:
+    #     count = 0
+    #     for _, row in pd_high.iterrows():
+    #         if nutrient in row['nutrient']:
+    #             count += 1
+
+    #     nutrient_coverage.append([nutrient, count, count/pd_high.shape[0]])
+
+    # pd_nutrient_coverage = pd.DataFrame(nutrient_coverage, columns=['nutrient', 'count', 'percentage'])
+    # pd_nutrient_coverage.sort_values(by='count', ascending=False, inplace=True)
+    # pd_nutrient_coverage.to_csv('./output/fdc_nutrient_coverage.txt', sep='\t', index=False)
+
+    pd_nutrient_coverage = pd.read_csv('./output/fdc_nutrient_coverage.txt', sep='\t')
+    pd_nutrient_coverage = pd_nutrient_coverage[pd_nutrient_coverage['percentage'] > 0.9]
+    selected_nutrients = pd_nutrient_coverage['nutrient'].tolist()
+    print(pd_nutrient_coverage)
+    print(selected_nutrients)
+    print()
+
+    gt_ontology = load_pkl('./data/FoodOn/candidate_classes_dict.pkl')
+    gt_ontology_list = []
+    for key, val in gt_ontology.items():
+        for entity in val[1]:
+            gt_ontology_list.append([key, entity])
+    pd_gt_ontology = pd.DataFrame(gt_ontology_list, columns=['class', 'entity'])
+
+    skeleton_ontology, _ = load_pkl('./data/FoodOn/random_seeds/2/skeleton_candidate_classes_dict_21.pkl')
+    skeleton_ontology_list = []
+    for key, val in skeleton_ontology.items():
+        for entity in val[1]:
+            skeleton_ontology_list.append([key, entity])
+    pd_skeleton_ontology = pd.DataFrame(skeleton_ontology_list, columns=['class', 'entity'])
+
+    pred_ontology = load_pkl('./data/scores/wiki/pairs_21.pkl')[0]
+    pd_pred_ontology = pd.DataFrame(pred_ontology, columns=['class', 'entity'])
+    pd_pred_ontology = pd.concat([pd_pred_ontology, pd_skeleton_ontology])
+
+    known_food_entities = pd_high['FoodOn food entity'].tolist()
+
+    pd_gt_ontology = pd_gt_ontology[pd_gt_ontology['entity'].isin(known_food_entities)]
+    pd_pred_ontology = pd_pred_ontology[pd_pred_ontology['entity'].isin(known_food_entities)]
+
+    pd_gt_ontology = pd_gt_ontology.groupby('class')['entity'].apply(list).reset_index()
+    pd_pred_ontology = pd_pred_ontology.groupby('class')['entity'].apply(list).reset_index()
+
+    pd_gt_ontology['count'] = pd_gt_ontology['entity'].apply(lambda x: len(x))
+    pd_pred_ontology['count'] = pd_pred_ontology['entity'].apply(lambda x: len(x))
+
+    pd_gt_ontology = pd_gt_ontology[pd_gt_ontology['count'] >= 2]
+    pd_pred_ontology = pd_pred_ontology[pd_pred_ontology['count'] >= 2]
+
+    gt_ontology_classes = pd_gt_ontology['class'].tolist()
+    pred_ontology_classes = pd_pred_ontology['class'].tolist()
+    common_classes = list(set(gt_ontology_classes) & set(pred_ontology_classes))
+
+    pd_gt_ontology = pd_gt_ontology[pd_gt_ontology['class'].isin(common_classes)]
+    pd_pred_ontology = pd_pred_ontology[pd_pred_ontology['class'].isin(common_classes)]
+
+    pd_gt_ontology = pd_gt_ontology.drop('count', axis=1)
+    pd_pred_ontology = pd_pred_ontology.drop('count', axis=1)
+
+    pd_analysis = pd_gt_ontology.set_index('class').join(
+        pd_pred_ontology.set_index('class'), lsuffix='_gt', rsuffix='_pred')
+
+    def _check_all_exist(entities):
+        new_entities = []
+        for entity in entities:
+            nutrient = pd_high[pd_high['FoodOn food entity'] == entity]['nutrient'].tolist()[0]
+            if set(selected_nutrients) <= set(list(nutrient.keys())):
+                new_entities.append(entity)
+
+        return new_entities
+
+    pd_analysis['entity_gt'] = pd_analysis['entity_gt'].apply(lambda x: _check_all_exist(x))
+    pd_analysis['entity_pred'] = pd_analysis['entity_pred'].apply(lambda x: _check_all_exist(x))
+
+    pd_analysis = pd_analysis[pd_analysis['entity_gt'].apply(lambda x: len(x)) >= 2]
+    pd_analysis = pd_analysis[pd_analysis['entity_pred'].apply(lambda x: len(x)) >= 2]
+
+    def _get_nutrient_vector(entities):
+        vector_list = []
+        for entity in entities:
+            nutrient = pd_high[pd_high['FoodOn food entity'] == entity]['nutrient'].tolist()[0]
+
+            vector_list.append([nutrient[x] for x in selected_nutrients])
+
+        return vector_list
+
+    pd_analysis['nutrient_gt'] = pd_analysis['entity_gt'].apply(lambda x: _get_nutrient_vector(x))
+    pd_analysis['nutrient_pred'] = pd_analysis['entity_pred'].apply(lambda x: _get_nutrient_vector(x))
+
+    def _cosine_similarity(array1, array2):
+        return np.dot(array1, array2) / (np.linalg.norm(array1) * np.linalg.norm(array2))
+
+    def _pairwise_cosine_similarity(vectors):
+        similarity_list = []
+        for each in itertools.combinations(vectors, 2):
+            similarity_list.append(_cosine_similarity(each[0], each[1]))
+
+        if np.isnan(similarity_list).any():
+            return np.nan
+        else:
+            return similarity_list
+
+    pd_analysis['pairwise_cs_gt'] = pd_analysis['nutrient_gt'].apply(lambda x: _pairwise_cosine_similarity(x))
+    pd_analysis['pairwise_cs_pred'] = pd_analysis['nutrient_pred'].apply(lambda x: _pairwise_cosine_similarity(x))
+
+    pd_analysis.dropna(subset=['pairwise_cs_gt'], inplace=True)
+    pd_analysis.dropna(subset=['pairwise_cs_pred'], inplace=True)
+    print(pd_analysis.shape)
+    print()
+
+    gt_similarities = pd_analysis['pairwise_cs_gt'].tolist()
+    pred_similarities = pd_analysis['pairwise_cs_pred'].tolist()
+
+    gt_similarities = [item for sublist in gt_similarities for item in sublist]
+    pred_similarities = [item for sublist in pred_similarities for item in sublist]
+
+    _, pval = ranksums(gt_similarities, pred_similarities)
+    print(np.mean(gt_similarities), np.mean(pred_similarities))
+    print(pval)
+
+
+def nutrient2():
+    # pd_fdc = pd.read_csv('./output/final_fdc.txt', sep='\t')
+    # pd_fdc.dropna(subset=['nutrients'], inplace=True)
+    # pd_fdc['nutrients'] = pd_fdc['nutrients'].apply(lambda x: ast.literal_eval(x))
+    # descriptions = pd_fdc['description'].tolist()
+    # print(pd_fdc.head())
+    # print()
+
+    # # gt ontology
+    # gt_ontology = load_pkl('./data/FoodOn/candidate_classes_dict.pkl')
+    # entities = [item for k, v in gt_ontology.items() for item in v[1] ]
+    # entities = list(set(entities))
+
+    # entities = entities[0:16]
+    # entities = [(descriptions, entity) for entity in entities]
+    # t1 = time()
+    # with multiprocessing.Pool(processes=16, maxtasksperchild=1) as p:
+    #     result = p.map(_fuzzy_search, entities)
+    # t2 = time()
+    # print(t2-t1)
+
+    # pd_result = pd.DataFrame(result, columns=['FoodOn food entity', 'FDC best match'])
+    # pd_result['Score'] = pd_result['FDC best match'].apply(lambda x: x[1])
+    # pd_result.to_csv('./output/foodon_fdc_search.txt', sep='\t', index=False)
+
+    # pd_result = pd.read_csv('./output/foodon_fdc_search.txt', sep='\t')
+    # pd_high = pd_result[pd_result['Score'] >= 95]
+    # pd_high['FDC best match'] = pd_high['FDC best match'].apply(lambda x: ast.literal_eval(x))
+    # print(pd_high.head())
+    # print()
+
+    # def _get_nutrient(keyword):
+    #     pd_subset = pd_fdc[pd_fdc['description'] == keyword[0]]
+    #     nutrients = pd_subset['nutrients'].tolist()
+    #     return nutrients[0]
+
+    # def _get_matching_count(keyword):
+    #     pd_subset = pd_fdc[pd_fdc['description'] == keyword[0]]
+    #     nutrients = pd_subset['nutrients'].tolist()
+    #     return len(nutrients)
+
+    # pd_high['nutrient'] = pd_high['FDC best match'].apply(lambda x: _get_nutrient(x))
+    # pd_high['matching count'] = pd_high['FDC best match'].apply(lambda x: _get_matching_count(x))
+    # pd_high.to_csv('./output/foodon_fdc_nutrients.txt', sep='\t', index=False)
+
+    pd_high = pd.read_csv('./output/foodon_fdc_nutrients.txt', sep='\t')
+    pd_high['nutrient'] = pd_high['nutrient'].apply(lambda x: ast.literal_eval(x))
+    pd_high['FDC best match'] = pd_high['FDC best match'].apply(lambda x: ast.literal_eval(x))
+    print(pd_high.head())
+    print(pd_high.shape)
+    print()
+
+    gt_ontology = load_pkl('./data/FoodOn/candidate_classes_dict.pkl')
+    gt_ontology_list = []
+    for key, val in gt_ontology.items():
+        for entity in val[1]:
+            gt_ontology_list.append([key, entity])
+    pd_gt_ontology = pd.DataFrame(gt_ontology_list, columns=['class', 'entity'])
+
+    skeleton_ontology, _ = load_pkl('./data/FoodOn/random_seeds/2/skeleton_candidate_classes_dict_21.pkl')
+    skeleton_ontology_list = []
+    for key, val in skeleton_ontology.items():
+        for entity in val[1]:
+            skeleton_ontology_list.append([key, entity])
+    pd_skeleton_ontology = pd.DataFrame(skeleton_ontology_list, columns=['class', 'entity'])
+
+    pred_ontology = load_pkl('./data/scores/wiki/pairs_21.pkl')[0]
+    pd_pred_ontology = pd.DataFrame(pred_ontology, columns=['class', 'entity'])
+    pd_pred_ontology = pd.concat([pd_pred_ontology, pd_skeleton_ontology])
+
+    known_food_entities = pd_high['FoodOn food entity'].tolist()
+
+    pd_gt_ontology = pd_gt_ontology[pd_gt_ontology['entity'].isin(known_food_entities)]
+    pd_pred_ontology = pd_pred_ontology[pd_pred_ontology['entity'].isin(known_food_entities)]
+
+    pd_gt_ontology = pd_gt_ontology.groupby('class')['entity'].apply(list).reset_index()
+    pd_pred_ontology = pd_pred_ontology.groupby('class')['entity'].apply(list).reset_index()
+
+    pd_gt_ontology['count'] = pd_gt_ontology['entity'].apply(lambda x: len(x))
+    pd_pred_ontology['count'] = pd_pred_ontology['entity'].apply(lambda x: len(x))
+
+    pd_gt_ontology = pd_gt_ontology[pd_gt_ontology['count'] >= 2]
+    pd_pred_ontology = pd_pred_ontology[pd_pred_ontology['count'] >= 2]
+
+    gt_ontology_classes = pd_gt_ontology['class'].tolist()
+    pred_ontology_classes = pd_pred_ontology['class'].tolist()
+    common_classes = list(set(gt_ontology_classes) & set(pred_ontology_classes))
+
+    pd_gt_ontology = pd_gt_ontology[pd_gt_ontology['class'].isin(common_classes)]
+    pd_pred_ontology = pd_pred_ontology[pd_pred_ontology['class'].isin(common_classes)]
+
+    pd_gt_ontology = pd_gt_ontology.drop('count', axis=1)
+    pd_pred_ontology = pd_pred_ontology.drop('count', axis=1)
+
+    pd_analysis = pd_gt_ontology.set_index('class').join(
+        pd_pred_ontology.set_index('class'), lsuffix='_gt', rsuffix='_pred')
+
+    # selected_nutrients = ['22:6 n-3 (DHA)']
+    # selected_nutrients = ['Zinc, Zn']
+    selected_nutrients = ['Carbohydrate, by difference']
+
+    def _check_all_exist(entities):
+        new_entities = []
+        for entity in entities:
+            nutrient = pd_high[pd_high['FoodOn food entity'] == entity]['nutrient'].tolist()[0]
+            if set(selected_nutrients) <= set(list(nutrient.keys())):
+                new_entities.append(entity)
+
+        return new_entities
+
+    pd_analysis['entity_gt'] = pd_analysis['entity_gt'].apply(lambda x: _check_all_exist(x))
+    pd_analysis['entity_pred'] = pd_analysis['entity_pred'].apply(lambda x: _check_all_exist(x))
+
+    pd_analysis = pd_analysis[pd_analysis['entity_gt'].apply(lambda x: len(x)) >= 2]
+    pd_analysis = pd_analysis[pd_analysis['entity_pred'].apply(lambda x: len(x)) >= 2]
+
+    def _get_nutrient_vector(entities):
+        vector_list = []
+        for entity in entities:
+            nutrient = pd_high[pd_high['FoodOn food entity'] == entity]['nutrient'].tolist()[0]
+
+            vector_list.extend([nutrient[x] for x in selected_nutrients])
+
+        return vector_list
+
+    pd_analysis['nutrient_gt'] = pd_analysis['entity_gt'].apply(lambda x: _get_nutrient_vector(x))
+    pd_analysis['nutrient_pred'] = pd_analysis['entity_pred'].apply(lambda x: _get_nutrient_vector(x))
+
+    def _cosine_similarity(array1, array2):
+        return np.dot(array1, array2) / (np.linalg.norm(array1) * np.linalg.norm(array2))
+
+    def _pairwise_cosine_similarity(vectors):
+        similarity_list = []
+        for each in itertools.combinations(vectors, 2):
+            similarity_list.append(_cosine_similarity(each[0], each[1]))
+
+        if np.isnan(similarity_list).any():
+            return np.nan
+        else:
+            return similarity_list
+
+    pd_analysis['pairwise_cs_gt'] = pd_analysis['nutrient_gt'].apply(lambda x: np.std(x))
+    pd_analysis['pairwise_cs_pred'] = pd_analysis['nutrient_pred'].apply(lambda x: np.std(x))
+
+    pd_analysis.dropna(subset=['pairwise_cs_gt'], inplace=True)
+    pd_analysis.dropna(subset=['pairwise_cs_pred'], inplace=True)
+
+    print(pd_analysis.head())
+    print(pd_analysis.shape)
+    print()
+
+    gt_similarities = pd_analysis['pairwise_cs_gt'].tolist()
+    pred_similarities = pd_analysis['pairwise_cs_pred'].tolist()
+
+    print(gt_similarities[0:5])
+    print(pred_similarities[0:5])
+    print()
+
+    _, pval = ranksums(gt_similarities, pred_similarities)
+    print(np.mean(gt_similarities), np.mean(pred_similarities))
+    print(pval)
 
 
 def main():
@@ -1932,7 +2325,12 @@ def main():
 
     # cheese_bean_wine_precision()
 
-    tarini_analyze()
+    # artifacts()
+
+    nutrient()
+
+    # nutrient2()
+
 
 if __name__ == '__main__':
     main()

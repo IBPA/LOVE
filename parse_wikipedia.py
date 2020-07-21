@@ -69,8 +69,6 @@ def main():
         queries.extend(processed_label.split())
     queries = list(set(queries))
 
-    log.info('Number of queries: %d', len(queries))
-
     # get summaries of the wikipedia entry
     wm = WikipediaManager()
 
