@@ -72,7 +72,7 @@ Paper is under review. This section will be updated once paper is published.
 
 ## License
 
-This project is licensed under the GNU GPLv3 License. Please see the <code>[LICENSE.md](./LICENSE.md)</code> file for details.
+This project is licensed under the GNU GPLv3 License. Please see the <code>[LICENSE](./LICENSE)</code> file for details.
 
 ## Acknowledgments
 
