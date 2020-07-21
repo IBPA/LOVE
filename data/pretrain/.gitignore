@@ -1,9 +1,0 @@
-# ignore everything in this directory
-*
-
-# except for these files
-!.gitignore
-!download_convert_glove.sh
-
-# even if they're in subdirectories
-!*/
