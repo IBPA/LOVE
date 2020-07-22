@@ -4,21 +4,22 @@ Food ontologies require significant effort to create and maintain, as it involve
 
 ![Figure 1](/../images/Figure%201.jpg?raw=true)
 
-## Directories
+## 1. Directories
 
 Following is a short description of each directory under the root folder.
 
 * <code>[config](./config)</code>: Contains all configurations files.
 * <code>[data](./data)</code>: Contains all data files.
+* <code>[hpc_scripts](./hpc_scripts)</code>: Scripts for running the code on HPC.
 * <code>[managers](./managers)</code>: Contains all python modules.
 * <code>[output](./output)</code>: All output files go here.
 * <code>[utils](./utils)</code>: Other utility files used in the project go here.
 
-## Getting Started
+## 2. Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-### Prerequisites
+### 2a. Prerequisites
 
 In addition to Python 3.6+, you can run the following command to install the required Python libraries.
 
@@ -32,14 +33,14 @@ Python package ```pattern``` depends on ```libmysqlclient-dev```. For Debian / U
 sudo apt-get install libmysqlclient-dev
 ```
 
-### Downloading Data
+### 2b. Downloading Data
 You need to download the GloVe 6B pre-trained weights. Following command downloads the word embeddings in GloVe format and converts them to Word2Vec compatible format.
 ```
 cd root/data/pretrain
 ./download_convert_glove.sh
 ```
 
-### Running
+### 2c. Running
 
 Configuration files use a general path `/path/to/project/root/directory` for compatibility. Please update these general paths to match your local computer. You can run the following script to do so.
 
@@ -57,23 +58,23 @@ You can run all the code by running the following script. Please refer to the in
 ./run.sh
 ```
 
-## Authors
+## 3. Authors
 
 * **Jason Youn** @ [https://github.com/jasonyoun](https://github.com/jasonyoun)
 * **Tarini Naravane** @ [https://github.com/nytarini](https://github.com/nytarini)
 
-## Contact
+## 4. Contact
 
 For any questions, please contact us at tagkopouloslab@ucdavis.edu.
 
-## Citation
+## 5.Citation
 
 Paper is under review. This section will be updated once paper is published.
 
-## License
+## 6. License
 
 This project is licensed under the GNU GPLv3 License. Please see the <code>[LICENSE](./LICENSE)</code> file for details.
 
-## Acknowledgments
+## 7. Acknowledgments
 
-We would like to thank the members of the Tagkopoulos lab for their suggestions. TN is supported by USDA grant 58-8040-8-015, and JY is supported by the Innovation Institute for Food and Health (IIFH) pilot grant, both to IT.
+* We would like to thank the members of the Tagkopoulos lab for their suggestions.
