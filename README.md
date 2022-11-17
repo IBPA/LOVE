@@ -55,6 +55,9 @@ Configuration files use a general path `/path/to/project/root/directory` for com
 You can run all the code by running the following script. Please refer to the in-line comments of the script for details.
 
 ```
+cd managers
+python parse_foodon.py
+cd ..
 ./run.sh
 ```
 
